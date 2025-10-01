@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Carte interactive</title>
+
+    <!-- Métadonnées SEO -->
+    <meta name="description"
+        content="Créez et gérez vos points géographiques interactifs avec GéoMap. Importez, exportez et reliez facilement des points sur une carte interactive." />
+    <meta name="keywords"
+        content="carte interactive, GéoMap, points géographiques, Leaflet, Bootstrap, importation, exportation, gestion de cartes, tracés, coordonnées" />
+    <meta name="author" content="Adrien ESCOUBEYROU" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://adrienescbr.github.io/GeoMap/" />
+
+    <!-- Open Graph (pour le partage sur les réseaux sociaux) -->
+    <meta property="og:title" content="GéoMap - Carte Interactive" />
+    <meta property="og:description"
+        content="Gérez vos points géographiques et explorez vos données sur une carte interactive avec GéoMap." />
+    <meta property="og:image" content="https://adrienescbr.github.io/GeoMap/GeoMap.png" />
+    <meta property="og:url" content="https://adrienescbr.github.io/GeoMap/" />
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GéoMap - Carte Interactive" />
+    <meta name="twitter:description"
+        content="Gérez vos points géographiques et explorez vos données sur une carte interactive avec GéoMap." />
+    <meta name="twitter:image" content="https://adrienescbr.github.io/GeoMap/GeoMap.png" />
+
+
+    <!-- Bootstrap CSS (sans integrity/crossorigin) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Leaflet CSS (sans integrity/crossorigin) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+
+    <!-- Notre propre fichier CSS -->
+    <link rel="stylesheet" href="./style/style.css" />
+</head>
+
+<body class="d-flex flex-column min-vh-100 align-items-center ">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+            <!-- Branding -->
+            <a class="navbar-brand me-3" href="#">GéoMap</a>
+
+            <!-- Toggler pour petits écrans -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Contenu collapsible -->
+            <div class="collapse navbar-collapse justify-content-start" id="navbarNav">
+                <ul class="navbar-nav">
+                    <!-- Nav-item pour ouvrir le menu des points -->
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" role="button" data-bs-toggle="offcanvas"
+                            data-bs-target="#sidebar" aria-controls="sidebar">
+                            Gestion des points
+                        </a>
+                    </li>
+
+                    <!-- Nav-item Importer/Exporter -->
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-bs-toggle="modal" data-bs-target="#importExportModal">
+                            Importer/Exporter
+                        </a>
+                    </li>
+
+                    <li class="nav-item d-flex align-items-center justify-content-start ms-3">
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" id="toggle-measure" checked />
+                            <label class="form-check-label" for="toggle-measure">Afficher distances</label>
+                        </div>
+                    </li>
+
+                    <li class="nav-item d-flex align-items-center justify-content-start ms-3">
+                        <button id="add-point-button"
+                            class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                            style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                            <img id="toggle-image" src="./assets/aim.png" alt="Toggle"
+                                style="max-width: 100%; max-height: 100%;" />
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar Offcanvas (Bootstrap) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="sidebarLabel">Gestion des points</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Fermer"></button>
+        </div>
+        <div class="offcanvas-body">
+            <!-- Formulaire pour ajouter un nouveau point -->
+            <form id="add-point-form" class="mb-4">
+                <div class="mb-3">
+                    <label for="new-desc" class="form-label">Description :</label>
+                    <input type="text" class="form-control" id="new-desc" placeholder="Ex : Nouvelle localisation"
+                        required />
+                </div>
+
+                <!-- Nouvelle input unique “coordonnées” -->
+                <div class="mb-3">
+                    <label for="new-coords" class="form-label">
+                        Coordonnées (latitude, longitude) :
+                    </label>
+                    <input type="text" class="form-control" id="new-coords" placeholder="Ex : 48.8566, 2.3522"
+                        required />
+                </div>
+
+                <!-- Zone d’affichage des labels ou du message d’erreur -->
+                <div id="coord-feedback" class="mb-3"></div>
+
+                <div class="mb-3">
+                    <label for="new-color" class="form-label">Couleur du repère :</label>
+                    <input type="color" class="form-control form-control-color" id="new-color" value="#3388ff"
+                        title="Choisir une couleur" />
+                </div>
+                <button type="submit" class="btn btn-success w-100">
+                    Ajouter le point
+                </button>
+            </form>
+
+            <!-- Section rétractable "Liste des points" -->
+            <div class="accordion" id="pointsAccordion">
+                <div class="accordion-item mb-2">
+                    <h2 class="accordion-header" id="headingList">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseList" aria-expanded="true" aria-controls="collapseList">
+                            Liste des points
+                        </button>
+                    </h2>
+                    <div id="collapseList" class="accordion-collapse collapse show" aria-labelledby="headingList">
+                        <div class="accordion-body p-0">
+                            <ul id="point-list" class="list-group list-group-flush"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-2">
+                    <h2 class="accordion-header" id="headingConnect">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseConnect" aria-expanded="true" aria-controls="collapseConnect">
+                            Relier deux points
+                        </button>
+                    </h2>
+                    <div id="collapseConnect" class="accordion-collapse collapse show" aria-labelledby="headingConnect">
+                        <div class="accordion-body">
+                            <div class="mb-3">
+                                <label for="select-point1" class="form-label">Point A :</label>
+                                <select id="select-point1" class="form-select">
+                                    <option value="" selected disabled>Choisir...</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="select-point2" class="form-label">Point B :</label>
+                                <select id="select-point2" class="form-select">
+                                    <option value="" selected disabled>Choisir...</option>
+                                </select>
+                            </div>
+                            <button id="connect-btn" class="btn btn-primary w-100">
+                                Relier
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- La carte Leaflet -->
+    <main class="flex-grow-1 d-flex w-100 h-100">
+        <div id="map" class="w-100 h-100" aria-label="Carte interactive pour gérer les points géographiques"></div>
+    </main>
+
+    <div class="toolbar">
+        <ul class="gap-10 d-flex align-items-center justify-content-evenly w-100 h-100 p-0 m-0">
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                    title="Add line segment"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/aim.png" alt="aim at location"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/line-segment.png" alt="add line"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/stretch.png" alt="stretch line"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/circle.png" alt="draw cricle"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="delete-btn"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/bin.png" alt="delete selection"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/rubber.png" alt="erase pointer"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+        </ul>
+    </div>
+
+
+
+
+    <div class="modal fade" id="importExportModal" tabindex="-1" aria-labelledby="importExportLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importExportLabel">
+                        Importer / Exporter les données
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3 d-flex align-items-start">
+                        <button id="export-btn" class="btn btn-success me-2" disabled>
+                            Copier dans le presse-papier
+                        </button>
+                        <button id="clear-area-btn" class="btn btn-secondary me-2">
+                            Effacer la zone
+                        </button>
+
+                    </div>
+                    <textarea id="import-export-area" class="form-control flex-grow-1" rows="8"
+                        placeholder="Coller vos données au format JSON pour les importer…"></textarea>
+
+                    <button id="import-btn" class="mt-3 btn btn-primary" disabled>
+                        Importer depuis la zone de texte
+                    </button>
+                    <div id="import-feedback" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="bg-light text-center py-3 mt-auto pb-0 w-100">
+        <p>&copy; 2025 GéoMap - Tous droits réservés.</p>
+    </footer>
+
+
+    <!-- Bootstrap JS (sans integrity/crossorigin) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS (sans integrity/crossorigin) -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <!-- Sortable.js pour réordonner la liste -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Make sure you put this AFTER leaflet.js -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.geodesic"></script>
+    <!-- Variables HTML en JS -->
+    <script src="./config/variables.js"></script>
+    <!-- Notre propre script JS -->
+    <script type="module" src="./main.js"></script>
+
+</body>
+
+</html>

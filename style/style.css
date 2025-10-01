@@ -1,0 +1,122 @@
+/* Hauteur de la carte pour occuper tout l’écran */
+/* #map {
+  height: calc(100vh - 56px);
+    width: 100%;
+  } */
+
+  /* body {
+    padding-top: 56px;
+  } */
+  
+  html, body {
+    height: 100%; /* Assure que le body occupe tout l'écran */
+    margin: 0;
+    
+  }
+
+  #map {
+    height: 100%; /* Permet à la carte de prendre toute la hauteur de son conteneur */
+    width: 100%; /* Optionnel, mais utile pour éviter des débordements */
+  }
+
+  main {
+    flex-grow: 1; /* Fait grandir le contenu principal pour occuper tout l'espace disponible */
+    display: flex; /* Permet de gérer des enfants comme #map */
+  }
+  
+  /* Petite icône carrée pour afficher la couleur dans la liste */
+  .color-box {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 1px solid #000;
+  }
+  
+  /* Curseur de déplacement pour les éléments de la liste */
+  .drag-handle {
+    cursor: grab;
+    margin-right: 8px;
+  }
+  
+  /* Styles pour le feedback (labels ou erreur) */
+  #coord-feedback label {
+    display: block;
+    font-weight: 500;
+  }
+  #coord-feedback .text-danger {
+    font-size: 0.9rem;
+  }
+  
+
+  #point-list li {
+    cursor: pointer;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    transition: background-color 0.2s ease;
+  }
+  
+  #point-list li:hover {
+    background-color: #f8d7da; /* Couleur d'indication */
+  }
+  
+
+  .distance-label {
+    background: white;
+    color: black;
+    padding: 2px 6px;
+    border: 1px solid #888;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+    text-align: center;
+  }
+  
+  .popup-icon-btn {
+    width: 25px;
+    height: 25px;
+    padding: 0;
+    border: none;
+    background: #f0f0f0;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  
+  .popup-icon-btn img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+  }
+  
+  .config-panel input[type="number"] {
+    width: 100%;
+  }
+
+  .config-panel{
+    top: 6vh;
+  }
+
+  #cursor-coords {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    font-family: monospace;
+  }
+
+  .toolbar{
+    position: absolute;
+    bottom: 12vh;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    padding: 5px;
+    z-index: 999;
+  }
+
+  .gap-10{
+    gap: 10px;
+  }
+  
