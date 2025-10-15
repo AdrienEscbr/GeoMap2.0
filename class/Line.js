@@ -8,8 +8,8 @@ class Line {
 
   datas(){
     return {
-        startPoint : this._startPoint.id,
-        endPoint : this._endPoint.id,
+        id1 : this._startPoint.id,
+        id2 : this._endPoint.id,
     }
   }
 

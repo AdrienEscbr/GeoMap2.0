@@ -26,11 +26,16 @@ class LineManager {
   }
   
   removeLine(startPoint, endPoint, save = false) {
-    this._lines = this._lines.filter(l => l.startPoint !== startPoint && l.endPoint !== endPoint);
-    if(save){
-      this.saveToStorage();
-    }    
+    this._lines = this._lines.filter(l =>
+      !(
+        (l.startPoint === startPoint && l.endPoint === endPoint) ||
+        (l.startPoint === endPoint   && l.endPoint === startPoint) // si non orientée
+      )
+    );
+  
+    if (save) this.saveToStorage();
   }
+  
 
   unselectAll(){
     if(this._lines){
@@ -95,11 +100,11 @@ class LineManager {
 
   loadFromStorage() {
     const lines = this.storage.load("lines");
-    // console.log("lines loaded : ", lines);
+    console.log("lines loaded : ", lines);
 
     lines.forEach(l => {
-      const start = this.pointManager.getPointById(l.startPoint);
-      const end = this.pointManager.getPointById(l.endPoint);
+      const start = this.pointManager.getPointById(l.id1);
+      const end = this.pointManager.getPointById(l.id2);
       if(start && end){
         this.addLine(start, end);
       }      

@@ -13,9 +13,9 @@ class Point {
   datas(){
     return {
         id : this._id,
-        description : this._description,
-        latitude : this._latitude,
-        longitude : this.longitude,
+        desc : this._description,
+        lat : this._latitude,
+        lng : this.longitude,
         color : this._color,
         radius : this._radius,
     }

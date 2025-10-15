@@ -12,8 +12,8 @@ class Circle {
   datas(){
     return {
         id : this._id,        
-        latitude : this._latitude,
-        longitude : this.longitude,
+        lat : this._latitude,
+        lng : this.longitude,
         radius : this._radius,
         color : this._color,
     }

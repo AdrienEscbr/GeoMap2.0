@@ -1,6 +1,6 @@
 import Circle from "../class/Circle.js";
 
-export class CircleManager {
+class CircleManager {
   constructor(map, storageManager) {
     this.map = map;
     this.storage = storageManager;
@@ -34,10 +34,10 @@ export class CircleManager {
 
   loadFromStorage() {
     const circles = this.storage.load("circles");
-    // console.log("circles loaded : ", circles);
+    console.log("circles loaded : ", circles);
 
     circles.forEach(c => {
-      this.addCircle(c.radius, c.latitude, c.longitude, c.color);
+      this.addCircle(c.radius, c.lat, c.lng, c.color);
     });
   }
 

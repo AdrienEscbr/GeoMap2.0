@@ -60,7 +60,7 @@
                 <ul class="navbar-nav">
                     <!-- Nav-item pour ouvrir le menu des points -->
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" role="button" data-bs-toggle="offcanvas"
+                        <a class="nav-link hover-underline active" href="#" role="button" data-bs-toggle="offcanvas"
                             data-bs-target="#sidebar" aria-controls="sidebar">
                             Gestion des points
                         </a>
@@ -68,12 +68,12 @@
 
                     <!-- Nav-item Importer/Exporter -->
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" data-bs-toggle="modal" data-bs-target="#importExportModal">
+                        <a class="nav-link hover-underline active" href="#" data-bs-toggle="modal" data-bs-target="#importExportModal">
                             Importer/Exporter
                         </a>
                     </li>
 
-                    <li class="nav-item d-flex align-items-center justify-content-start ms-3">
+                    <!-- <li class="nav-item d-flex align-items-center justify-content-start ms-3">
                         <div class="form-check form-switch m-0">
                             <input class="form-check-input" type="checkbox" id="toggle-measure" checked />
                             <label class="form-check-label" for="toggle-measure">Afficher distances</label>
@@ -87,7 +87,7 @@
                             <img id="toggle-image" src="./assets/aim.png" alt="Toggle"
                                 style="max-width: 100%; max-height: 100%;" />
                         </button>
-                    </li>
+                    </li> -->
                 </ul>
             </div>
         </div>
@@ -125,7 +125,7 @@
                     <input type="color" class="form-control form-control-color" id="new-color" value="#3388ff"
                         title="Choisir une couleur" />
                 </div>
-                <button type="submit" class="btn btn-success w-100">
+                <button type="submit" class="btn btn-success w-100" id="add-point-form-btn">
                     Ajouter le point
                 </button>
             </form>
@@ -186,15 +186,32 @@
     <div class="toolbar">
         <ul class="gap-10 d-flex align-items-center justify-content-evenly w-100 h-100 p-0 m-0">
             <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
-                    title="Add line segment"
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="show-names-btn"
+                    title="Show location names"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/font.png" alt="location names"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="show-distances-btn"
+                    title="Show distances"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/compass.png" alt="distance"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="add-point-btn"
+                    title="Add point"
                     style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
                     <img src="./assets/aim.png" alt="aim at location"
                         style="max-width: 100%; max-height: 100%;" />
                 </button>
             </li>
             <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="add-line-btn"
+                    title="Add lines between selected points"
                     style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
                     <img src="./assets/line-segment.png" alt="add line"
                         style="max-width: 100%; max-height: 100%;" />
@@ -202,29 +219,41 @@
             </li>
             <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
                 <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                    title="Stretch existing line"
                     style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
                     <img src="./assets/stretch.png" alt="stretch line"
                         style="max-width: 100%; max-height: 100%;" />
                 </button>
             </li>
             <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="circle-btn"
+                    title="Add circle centered on existing point"
                     style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
                     <img src="./assets/circle.png" alt="draw cricle"
                         style="max-width: 100%; max-height: 100%;" />
                 </button>
             </li>
             <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="line-angle"
+                    title="Modify ligne angle"
+                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
+                    <img src="./assets/angle.png" alt="line angle"
+                        style="max-width: 100%; max-height: 100%;" />
+                </button>
+            </li>
+            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
                 <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="delete-btn"
+                    title="Remove selection"
                     style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
                     <img src="./assets/bin.png" alt="delete selection"
                         style="max-width: 100%; max-height: 100%;" />
                 </button>
             </li>
             <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
+                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="erase-btn"
+                    title="Remove pointed element"
                     style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/rubber.png" alt="erase pointer"
+                    <img src="./assets/rubber.png" alt="erase pointed element"
                         style="max-width: 100%; max-height: 100%;" />
                 </button>
             </li>

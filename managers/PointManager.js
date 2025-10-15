@@ -83,10 +83,10 @@ class PointManager {
 
   loadFromStorage() {
     const points = this.storage.load("points");
-    // console.log("points loaded : ", points);
+    console.log("points loaded : ", points);
 
     points.forEach(p => {
-      this.addPoint(p.id, p.description, p.latitude, p.longitude, p.color);
+      this.addPoint(p.id, p.desc, p.lat, p.lng, p.color);
     });
   }
 

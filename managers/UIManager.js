@@ -1,97 +1,406 @@
+import Point from "../class/Point.js";
+import Line from "../class/Line.js";
+import Circle from "../class/Circle.js";
 
 class UIManager {
-  constructor(map, storageManager, pointManager = [], lineManager = [], circleManager = []) {
+  constructor(
+    map,
+    storageManager,
+    pointManager,
+    lineManager,
+    circleManager,
+    renderer,
+    selection
+  ) {
     this.map = map.getMapInstance();
     this.storage = storageManager;
     this.pointManager = pointManager;
     this.lineManager = lineManager;
     this.circleManager = circleManager;
+    this.renderer = renderer;
+    this.selection = selection;
 
-    this.click = false;
+    this.connectMode = false;
+    this.isEraseMode = false;
+    this.showDistances = false;
+    this.showNames = false;
+    this.circleCreationMode = false;
+    // this.activeCircle = null; // cercle temporaire pendant le redimensionnement
+    // this.radiusLabel = null;  // label HTML qui suit la souris
+    this.circleTool = {
+      active: false,      // bouton actif/inactif
+      center: null,       // Point choisi comme centre
+      tempCircle: null,   // L.circle temporaire
+      moveHandler: null,  // listener mousemove
+      labelEl: null       // div du label "NNN m"
+    };
+    
 
-    this.draw()
-
+    // Initialisation UI
+    this.setUpAddPointForm();
+    this.setUpToolbar();
     this.setUpImportExportModal();
     this.setUpPointsList();
     this.setUpPointsToConnect();
+    this.setUpEraseTool();
+    this.setUpDistanceToggle();
 
-    this.setUpToolbar();
+    this.redraw();
 
-
-    // Unselect items when clicking on map 
-    this.map.addEventListener('click', () => {
-      if(this.click == false){
-        if (this.lineManager.hasSelectedLine() || this.pointManager.hasSelectedPoint()) {
-          this.lineManager.unselectAll();
-          this.pointManager.unselectAll();
-          this.removeAll();
-          this.draw();
-          this.disabledDeleteSelectionButton(true);
-        }
+    // Clic sur la carte → désélectionner tout
+    this.map.on("click", (e) => {
+      // cercle en cours → valider sur latlng
+      if (this.circleTool.active && this.circleTool.center && this.circleTool.tempCircle) {
+        this.validateCircle(e);
+        return;
       }
-      this.click = false;
+    
+      // le reste : comme avant
+      if (this.connectMode || this.isEraseMode) return;
+      if (!this.selection.hasSelection()) return;
+    
+      this.selection.clear();
+      this.redraw();
+      this.disabledDeleteSelectionButton(true);
     });
-
+    
+    
   }
 
-  setUpImportExportModal(){
-    importExportModal.addEventListener('show.bs.modal', () => {
-      // S'il n'y a pas de données sauvegardées, on garde Export désactivé
+  // Redessine tout
+  redraw() {
+    this.renderer.clear();
+    this.renderer.clearNameLabels();
+    this.renderer.clearDistanceLabels();
+
+    // Cercles
+    this.circleManager.circles.forEach((c) => {
+      this.renderer.drawCircle(c, this.selection.isSelected(c), (circle) => {
+        if (this.isEraseMode) {
+          this.circleManager.removeCircle(circle.id, true);
+          this.redraw();
+          this.setUpPointsList();
+          this.setUpPointsToConnect();
+          return;
+        }
+
+        this.selection.toggle(circle);
+        this.redraw();
+        this.disabledDeleteSelectionButton(!this.selection.hasSelection());
+      });
+    });
+
+    // Lignes
+    this.lineManager.lines.forEach((l) => {
+      this.renderer.drawLine(l, this.selection.isSelected(l), (line) => {
+        if (this.isEraseMode) {
+          this.lineManager.removeLine(line.startPoint, line.endPoint, true);
+          this.redraw();
+          this.setUpPointsList();
+          this.setUpPointsToConnect();
+          return;
+        }
+
+        this.selection.toggle(line);
+        this.redraw();
+        this.disabledDeleteSelectionButton(!this.selection.hasSelection());
+      }, 
+      this.showDistances
+      );
+    });
+
+    // === Points ===
+    this.pointManager.points.forEach((p) => {
+      this.renderer.drawPoint(p, this.selection.isSelected(p), (point) => {
+        if (this.isEraseMode) {
+          // 🔹 Supprimer toutes les lignes reliées au point
+          const linesToRemove = this.lineManager.getLinesWithPoint(point);
+          linesToRemove.forEach((line) =>
+            this.lineManager.removeLine(line.startPoint, line.endPoint, true)
+          );
+
+          // 🔹 Supprimer le point lui-même
+          this.pointManager.removePoint(point, true);
+
+          // 🔹 Nettoyer la sélection
+          this.selection.remove(point);
+
+          // 🔹 Rafraîchir l’UI
+          this.redraw();
+          this.setUpPointsList();
+          this.setUpPointsToConnect();
+          return; // ⬅️ Empêche le reste (sélection)
+        }
+
+        // === Sinon comportement normal ===
+        this.selection.toggle(point);
+        this.redraw();
+        this.disabledDeleteSelectionButton(!this.selection.hasSelection());
+
+        // 🔹 Mode connect actif → création automatique de ligne
+        if (this.connectMode) {
+          const selectedPoints = this.selection
+            .getAll()
+            .filter((e) => e instanceof Point);
+          if (selectedPoints.length >= 2) {
+            const last = selectedPoints[selectedPoints.length - 1];
+            const prev = selectedPoints[selectedPoints.length - 2];
+
+            if (last !== prev) {
+              const alreadyExists = this.lineManager.lines.some(
+                (l) =>
+                  (l.startPoint === last && l.endPoint === prev) ||
+                  (l.startPoint === prev && l.endPoint === last)
+              );
+
+              if (!alreadyExists) {
+                this.lineManager.addLine(prev, last, true);
+                this.redraw();
+              }
+            }
+          }
+        }
+      });
+      if(this.showNames){
+        this.renderer.addNameLabel(p);
+      }
+    });
+  }
+
+  setUpDistanceToggle() {
+    tbDistanceBtn.addEventListener('click', () => {
+      this.showDistances = !this.showDistances;
+      
+      if(this.showDistances){
+        tbDistanceBtn.classList.add("active");
+      }
+      else{
+        tbDistanceBtn.classList.remove("active")
+      }
+  
+      this.redraw();
+    });
+  }
+  
+
+  // === Toolbar ===
+  disabledDeleteSelectionButton(value) {
+    tbDeleteBtn.disabled = value;
+  }
+
+  setUpAddPointForm() {
+    sbNewPointFormContainer.addEventListener('submit', (e) => {
+      e.preventDefault();
+  
+      // Nettoyer tout ancien message d’erreur
+      sbNewPointErrorMsg.innerHTML = '';
+  
+      // Récupération des valeurs
+      const desc = sbNewPointDescriptionInput.value.trim();
+      const coordStr = sbNewPointCoordinatesInput.value.trim();
+      const color = sbNewPointColorInput.value;
+  
+      // Vérification format "lat, lng"
+      const parts = coordStr.split(',');
+      if (parts.length !== 2) {
+        sbNewPointErrorMsg.innerHTML =
+          '<div class="text-danger">Erreur : veuillez saisir “latitude, longitude” séparées par une virgule.</div>';
+        return;
+      }
+  
+      // Conversion
+      const lat = parseFloat(parts[0].trim());
+      const lng = parseFloat(parts[1].trim());
+  
+      // Validation numérique
+      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        sbNewPointErrorMsg.innerHTML =
+          '<div class="text-danger">Erreur : latitude doit être entre -90 et 90, longitude entre -180 et 180.</div>';
+        return;
+      }
+  
+      // Ajout du point via PointManager
+      this.pointManager.addPoint(null, desc, lat, lng, color, true);
+  
+      // Rafraîchissement de l’UI
+      this.redraw();
+      this.setUpPointsList();
+      this.setUpPointsToConnect();
+  
+      // Réinitialisation du formulaire
+      sbNewPointFormContainer.reset();
+      sbNewPointErrorMsg.innerHTML = '';
+      sbNewPointColorInput.value = color; // garde la dernière couleur utilisée
+    });
+  }
+  
+
+  setUpEraseTool() {
+    tbEraseBtn.addEventListener("click", () => {
+      this.isEraseMode = !this.isEraseMode; // toggle l’état
+
+      if (this.isEraseMode) {
+        // Changement visuel
+        tbEraseBtn.classList.add("active");
+        this.map.getContainer().style.cursor =
+          "url('./assets/rubber.png') 8 8, auto";
+      } else {
+        tbEraseBtn.classList.remove("active");
+        this.map.getContainer().style.cursor = "auto";
+      }
+
+      // On redessine pour que les click handlers s’adaptent au mode actif
+      this.redraw();
+    });
+  }
+
+  setUpToolbar() {
+    this.disabledDeleteSelectionButton(true);
+
+    tbDeleteBtn.addEventListener("click", () => {
+      const selected = this.selection.getAll();
+      selected.forEach((entity) => {
+        if (entity instanceof Point) {
+          const linkedLines = this.lineManager.getLinesWithPoint(entity);
+          linkedLines.forEach((line) => {
+            this.lineManager.removeLine(line.startPoint, line.endPoint, true);
+          });
+          this.pointManager.removePoint(entity, true);
+        } else if (entity instanceof Line) {
+          this.lineManager.removeLine(entity.startPoint, entity.endPoint, true);
+        } else if (entity instanceof Circle) {
+          this.circleManager.removeCircle(entity.id, true);
+        }
+      });
+      this.selection.clear();
+      this.redraw();
+      this.setUpPointsList();
+      this.setUpPointsToConnect();
+      this.disabledDeleteSelectionButton(true);
+    });
+
+    tbAddLineBtn.addEventListener("click", () => {
+      this.connectMode = !this.connectMode;
+
+      if(this.connectMode){
+        tbAddLineBtn.classList.add("active");
+      }
+      else{
+        tbAddLineBtn.classList.remove("active");
+      }
+
+      // === Si on vient d'activer le mode ===
+      if (this.connectMode) {
+        const selectedPoints = this.selection
+          .getAll()
+          .filter((e) => e instanceof Point);
+
+        if (selectedPoints.length > 1) {
+          for (let i = 0; i < selectedPoints.length - 1; i++) {
+            const p1 = selectedPoints[i];
+            const p2 = selectedPoints[i + 1];
+
+            const alreadyExists = this.lineManager.lines.some(
+              (l) =>
+                (l.startPoint === p1 && l.endPoint === p2) ||
+                (l.startPoint === p2 && l.endPoint === p1)
+            );
+
+            if (!alreadyExists) {
+              this.lineManager.addLine(p1, p2, true);
+            }
+          }
+
+          this.redraw();
+        }
+      }
+    });
+
+    tbNameBtn.addEventListener("click", () => {
+      this.showNames = !this.showNames;
+    
+      if(this.showNames){
+        tbNameBtn.classList.add("active");
+      }
+      else{
+        tbNameBtn.classList.remove("active");
+      }
+    
+      if (this.showNames) {
+        this.pointManager.points.forEach(p => this.renderer.addNameLabel(p));
+      } else {
+        this.renderer.clearNameLabels();
+      }
+    });
+
+    // === Bouton pour créer des cercles ===
+    tbAddCircleBtn.addEventListener("click", () => {
+      this.circleTool.active = !this.circleTool.active;
+    
+      tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
+    
+      if (this.circleTool.active) {
+        this.isEraseMode = false;
+        this.connectMode = false;
+        this.map.getContainer().style.cursor = "crosshair";
+      } else {
+        this.map.getContainer().style.cursor = "auto";
+        // annuler un cercle en cours (si l'utilisateur désactive au milieu)
+        if (this.circleTool.moveHandler) this.map.off("mousemove", this.circleTool.moveHandler);
+        if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
+        if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
+        this.circleTool.center = null;
+        this.circleTool.tempCircle = null;
+        this.circleTool.moveHandler = null;
+        this.circleTool.labelEl = null;
+      }
+    });
+    
+
+    
+  }
+
+  // === Import/Export modal ===
+  setUpImportExportModal() {
+    importExportModal.addEventListener("show.bs.modal", () => {
       iemCopyBtn.disabled = !this.storage.hasData();
-      iemTextInput.value = '';
-      iemErrorMsg.innerHTML = '';
+      iemTextInput.value = "";
+      iemErrorMsg.innerHTML = "";
       iemImportBtn.disabled = true;
     });
 
-    // Lorsque la textarea change, on active/désactive Import
-    iemTextInput.addEventListener('input', () => {
-      iemImportBtn.disabled = iemTextInput.value.trim() === '';
+    iemTextInput.addEventListener("input", () => {
+      iemImportBtn.disabled = iemTextInput.value.trim() === "";
     });
 
-    // Effacer la textarea
-    iemClearBtn.addEventListener('click', () => {
-      iemTextInput.value = '';
-      iemErrorMsg.innerHTML = '';
+    iemClearBtn.addEventListener("click", () => {
+      iemTextInput.value = "";
+      iemErrorMsg.innerHTML = "";
       iemImportBtn.disabled = true;
     });
 
-    /** Génére l’objet à exporter, sérialise et affiche dans la textarea */
-    iemCopyBtn.addEventListener('click', () => {
+    iemCopyBtn.addEventListener("click", () => {
       const data = {
-        points: this.pointManager.points.map(p => ({
-          id: p.id, 
-          desc: p.description, 
-          lat: p.latitude, 
-          lng: p.longitude, 
-          color: p.color,
-        })),
-        lines: this.lineManager.lines.map(l => ({           
-          id1: l.startPoint.id, 
-          id2: l.endPoint.id, 
-        })),
-        circles: this.circleManager.circles.map(c => ({
-          lat: c.longitude,
-          lng: c.longitude,
-          radius: c.radius,
-          color: c.color
-        }))
+        points: this.pointManager.points.map((p) => p.datas()),
+        lines: this.lineManager.lines.map((l) => l.datas()),
+        circles: this.circleManager.circles.map((c) => c.datas()),
       };
       const json = JSON.stringify(data, null, 2);
       iemTextInput.value = json;
-      navigator.clipboard.writeText(json)
+      navigator.clipboard
+        .writeText(json)
         .then(() => {
-          iemErrorMsg.innerHTML = '<div class="text-success">Données copiées !</div>';
+          iemErrorMsg.innerHTML =
+            '<div class="text-success">Données copiées !</div>';
         })
         .catch(() => {
           iemErrorMsg.innerHTML = '<div class="text-danger">Échec copie.</div>';
         });
-      // On peut importer immédiatement après export
       iemImportBtn.disabled = false;
     });
 
-    /** Importe les données depuis la textarea sans écraser l’existant */
-    iemImportBtn.addEventListener('click', () => {
-      iemErrorMsg.innerHTML = '';
+    iemImportBtn.addEventListener("click", () => {
+      iemErrorMsg.innerHTML = "";
       let data;
       try {
         data = JSON.parse(iemTextInput.value);
@@ -99,99 +408,63 @@ class UIManager {
         iemErrorMsg.innerHTML = '<div class="text-danger">JSON invalide.</div>';
         return;
       }
-      if (!data.points || !Array.isArray(data.points) ||
-          !data.lines || !Array.isArray(data.lines) ||
-          !data.circles || !Array.isArray(data.circles)) {
-        iemErrorMsg.innerHTML = '<div class="text-danger">Format attendu : { points: […], lines: […], circles: […] }.</div>';
+
+      if (
+        !data.points ||
+        !Array.isArray(data.points) ||
+        !data.lines ||
+        !Array.isArray(data.lines) ||
+        !data.circles ||
+        !Array.isArray(data.circles)
+      ) {
+        iemErrorMsg.innerHTML =
+          '<div class="text-danger">Format attendu : { points: […], lines: […], circles: […] }.</div>';
         return;
       }
 
-      // Importer les points uniques
-      let added = 0;
-      data.points.forEach((pt, index) => {
-        if (
-          typeof pt.id === 'number' &&
-          typeof pt.desc === 'string' &&
-          typeof pt.lat === 'number' &&
-          typeof pt.lng === 'number' &&
-          typeof pt.color === 'string' &&
-          !this.pointManager.points.some(e => (e.id === pt.id))
-        ) {
-          this.pointManager.addPoint(pt.id, pt.desc, pt.lat, pt.lng, pt.color, true);
-          added++;
+      // Points
+      data.points.forEach((pt) => {
+        if (!this.pointManager.getPointById(pt.id)) {
+          this.pointManager.addPoint(
+            pt.id,
+            pt.desc,
+            pt.lat,
+            pt.lng,
+            pt.color,
+            true
+          );
         }
       });
 
-      this.drawPoints();
-
-      // Importer les lignes uniques
-      let addedLines = 0;
-      data.lines.forEach(ln => {
-        if (
-          this.pointManager.points &&
-          typeof ln.id1 === 'number' &&
-          typeof ln.id2 === 'number' &&
-          !this.lineManager.lines.some(e => (e.startPoint.id === ln.id1 && e.endPoint.id === ln.id2) || (e.startPoint.id === ln.id2 && e.endPoint.id === ln.id1))
-        ) {
-          const p1 = this.pointManager.getPointById(ln.id1);
-          const p2 = this.pointManager.getPointById(ln.id2);
-          if (p1 && p2) {
-            this.lineManager.addLine(p1, p2, true);
-            addedLines++;
-            // if(distanceButton.checked){
-            //   showLinesDistance(line);
-            // }        
-          }
+      // Lines
+      data.lines.forEach((ln) => {
+        const p1 = this.pointManager.getPointById(ln.id1);
+        const p2 = this.pointManager.getPointById(ln.id2);
+        if (p1 && p2) {
+          this.lineManager.addLine(p1, p2, true);
         }
       });
-      this.drawLines();
 
-      // Importer les cercles
-      let addedCircles = 0;
-      if (Array.isArray(data.circles)) {
-        data.circles.forEach(c => {
-          if (
-            typeof c.lat === 'number' &&
-            typeof c.lng === 'number' &&
-            typeof c.radius === 'number' &&
-            typeof c.color === 'string' &&
-            !this.circleManager.circles.some(e => (e.latitude === c.lat && e.longitude === c.lng && e.radius === c.radius && e.color === c.color))
-          ) {
-              this.circleManager.addCircle(
-              c.radius,
-              c.lat,
-              c.lng,
-              c.color,
-              true
-            );
-            addedCircles++;
-          }
-        });
+      // Circles
+      data.circles.forEach((c) => {
+        this.circleManager.addCircle(c.radius, c.lat, c.lng, c.color, true);
+      });
 
-        this.drawCircles();
-        // saveCirclesToLocalStorage(); // mettre à jour le stockage
-      }
-
+      this.redraw();
       this.setUpPointsList();
 
-      // Régénérer la liste et sauvegarder
-      // renderPointList();
-      // saveToLocalStorage();
-
-      iemErrorMsg.innerHTML =
-        `<div class="text-success">${added} point(s) et ${addedLines} tracé(s) et ${addedCircles} cercle(s) ajoutés.</div>`;
+      iemErrorMsg.innerHTML = '<div class="text-success">Import réussi.</div>';
     });
   }
 
-  setUpPointsList(){
-    // Initialisation de Sortable pour la liste
+  // === Liste des points ===
+  setUpPointsList() {
     Sortable.create(sbPointsList, {
-      handle: '.drag-handle',
+      handle: ".drag-handle",
       animation: 150,
-      onEnd: (evt) => {
-        // Mettre à jour l'ordre dans le tableau `points` selon l'ordre visuel
+      onEnd: () => {
         const idsInOrder = Array.from(sbPointsList.children).map((li) =>
-          parseInt(li.getAttribute('data-id'))
+          parseInt(li.getAttribute("data-id"))
         );
         this.pointManager.points.sort(
           (a, b) => idsInOrder.indexOf(a.id) - idsInOrder.indexOf(b.id)
@@ -199,306 +472,246 @@ class UIManager {
       },
     });
 
-    sbPointsList.innerHTML = '';
+    sbPointsList.innerHTML = "";
+    console.log(this.pointManager.points);
     this.pointManager.points.forEach((p) => {
-      const li = document.createElement('li');
-      li.className = 'list-group-item d-flex align-items-center';
-      li.setAttribute('data-id', p.id);
+      const li = document.createElement("li");
+      li.className = "list-group-item d-flex align-items-center";
+      li.setAttribute("data-id", p.id);
 
-      // Poignée de déplacement
-      const dragHandle = document.createElement('span');
-      dragHandle.innerHTML = '☰';
-      dragHandle.className = 'drag-handle';
+      const dragHandle = document.createElement("span");
+      dragHandle.innerHTML = "☰";
+      dragHandle.className = "drag-handle";
       li.appendChild(dragHandle);
 
-      // Boîte de couleur
-      const colorBox = document.createElement('span');
-      colorBox.className = 'color-box';
+      const colorBox = document.createElement("span");
+      colorBox.className = "color-box";
       colorBox.style.backgroundColor = p.color;
       li.appendChild(colorBox);
 
-      // Description et coordonnées
-      const infoDiv = document.createElement('div');
-      infoDiv.className = 'flex-grow-1';
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "flex-grow-1";
       infoDiv.innerHTML = `<strong>${p.description}</strong><br>
         (${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)})`;
       li.appendChild(infoDiv);
 
-      // Bouton modifier
-      const btnEdit = document.createElement('button');
-      btnEdit.className = 'btn btn-sm btn-warning me-2';
-      btnEdit.textContent = 'Modifier';
-      // btnEdit.addEventListener('click', () => openEditModal(p.id));
-      li.appendChild(btnEdit);
-
-      // Bouton supprimer
-      const btnDel = document.createElement('button');
-      btnDel.className = 'btn btn-sm btn-danger';
-      btnDel.textContent = 'Supprimer';
-      btnDel.addEventListener('click', () => {
-        console.log("Delete point")
-        this.removePoint(p, false, true);
+      const btnDel = document.createElement("button");
+      btnDel.className = "btn btn-sm btn-danger";
+      btnDel.textContent = "Supprimer";
+      btnDel.addEventListener("click", () => {
+        const linkedLines = this.lineManager.getLinesWithPoint(p);
+        linkedLines.forEach((line) => {
+          this.lineManager.removeLine(line.startPoint, line.endPoint, true);
+        });
+        this.pointManager.removePoint(p, true);
         sbPointsList.removeChild(li);
-        // deletePoint(p.id);
-        // reloadDistanceLabels();
-        // closeAllConfigMenus();
+        this.redraw();
+        this.setUpPointsList();
+        this.setUpPointsToConnect();
       });
       li.appendChild(btnDel);
 
       sbPointsList.appendChild(li);
     });
-    // mettreAJourSelects();
-
-
   }
 
-
-  drawPoint(point){
-    let color = '#0000FF'
-    if(point.selected == true){
-      color = '#FF0000'
-    }
-    const marker = L.circleMarker([point.latitude, point.longitude], {
-      radius: point.radius, fillColor: point.color, color: color, weight: 1, fillOpacity: 0.9
-    })
-    .addTo(this.map)
-    // .bindPopup(popupContent(point.description, point.latitude.toFixed(5), point.longitude.toFixed(5)));
-    point.marker = marker;    
-    point.marker.addEventListener('click', () =>{
-      console.log("clicked on point marker", point, this.pointManager.points, point.selected)
-      if(!point.selected){
-        point.selected = true;
-        this.disabledDeleteSelectionButton(false);
-        this.removePoint(point, true, false);
-        this.drawPoint(point);
-        this.click = true;        
-      }
-      else{
-        point.selected = false;
-        this.disabledDeleteSelectionButton(true);
-        this.removePoint(point, true, false);
-        this.drawPoint(point);
-        this.click = true;
-      }
-    })
-  }
-
-  drawPoints(){
-    if(this.pointManager.points){
-      this.pointManager.points.forEach(point => {
-        this.drawPoint(point);
-      })
-    }
-  }
-
-  removePoint(point, keepLines = false, save=false){
-    if (point === null) {
-      console.error("Impossible de retirer le point.");
-      return; 
-    }
-    
-    if(point.marker !== null){
-      this.map.removeLayer(point.marker);
-    }   
-
-    if(save){
-      this.pointManager.removePoint(point, save);
-    }
-
-    if(!keepLines){
-      const lines = this.lineManager.getLinesWithPoint(point)
-      if(lines){
-        lines.forEach(line => {
-          this.removeLine(line, save);
-        });      
-      }
-    }
-      
-  }
-
-  removeLine(line, save=false){    
-    if(line.marker !== null){
-      this.map.removeLayer(line.marker);
-    }   
-    if(save){
-      this.lineManager.removeLine(line.startPoint, line.endPoint, save);
-    }
-  }
-
-  removeSelection(){
-    const pointsSelected = this.pointManager.getSelectedPoints();
-    console.log(pointsSelected)
-    if(pointsSelected){
-      pointsSelected.forEach(point => {
-        this.removePoint(point, false, true);
-      })
-    }
-    const linesSelected = this.lineManager.getSelectedLines();
-    if(linesSelected){
-      linesSelected.forEach(line => {
-        this.removeLine(line, true);
-      })
-    }
-  }
-
-  drawLine(line){
-    let color = '#0000FF'
-    if(line.selected == true){
-      color = '#FF0000'
-    }
-    const marker = L.geodesic([[line.startPoint.latitude, line.startPoint.longitude], [line.endPoint.latitude, line.endPoint.longitude]], { 
-      color: color, weight: 3 
-    })
-    .addTo(this.map);
-    line.marker = marker; 
-    
-    // TODO : unselect when click on selected line
-    line.marker.addEventListener('click', () =>{
-      console.log("clicked on line marker")
-      
-      if(!line.selected){
-        line.selected = true;
-        this.disabledDeleteSelectionButton(false)
-        this.removeLines()
-        this.drawLines();
-        this.click = true;        
-      }
-      else{
-        line.selected = false;
-        this.disabledDeleteSelectionButton(true)
-        this.removeLines()
-        this.drawLines();
-        this.click = true;
-      }
-    })
-  }
-
-  drawLines(){
-    if(this.lineManager.lines){
-      this.lineManager.lines.forEach(line => {
-        this.drawLine(line);
-      })
-    }    
-  }
-
-  drawCircle(circle){
-    const marker = L.circle([circle.latitude, circle.longitude], {
-      radius: circle.radius,
-      color: circle.color,
-      fillOpacity: 0.3
-    })
-    .addTo(this.map);
-    circle.marker = marker;
-    // attachCircleEvent(circle); // pour permettre de configurer en cliquant dessus
-  }
-
-  drawCircles(){
-    if(this.circleManager.circles){
-      this.circleManager.circles.forEach(circle => {
-        this.drawCircle(circle);
-      })
-    }
-  }
-
-  draw(){
-    this.drawLines();
-    this.drawCircles();
-    this.drawPoints();
-  }
-
-  removeAll(){
-    this.removeCircles();
-    this.removeLines();
-    this.removePoints();
-  }
-
-  removePoints(){
-    if(this.pointManager.points){
-      this.pointManager.points.forEach( point => {
-        if(point.marker !== null){
-          this.map.removeLayer(point.marker);
-        }
-      });     
-    }
-  }
-
-  removeCircles(){
-    if(this.circleManager.circles){
-      this.circleManager.circles.forEach( circle => {
-        if(circle.marker !== null){
-          this.map.removeLayer(circle.marker);
-        }
-      });     
-    }
-  }
-
-  removeLines(){
-    if(this.lineManager.lines){
-      this.lineManager.lines.forEach( line => {
-        if(line.marker !== null){
-          this.map.removeLayer(line.marker);
-        }
-      });     
-    }
-  }
-
-  setUpPointsToConnect(){
-    
+  // === Connexion de points ===
+  setUpPointsToConnect() {
     sbConnectBtn.disabled = true;
-    sbFirstPointToConnect.innerHTML = '<option value="" disabled>Choisir...</option>';
-    sbSecondPointToConnect.innerHTML = '<option value="" disabled>Choisir...</option>';
-    // Remplir les selects
-    this.pointManager.points.forEach((p) => {      
-      const opt1 = document.createElement('option');
+    sbFirstPointToConnect.innerHTML =
+      '<option value="" disabled>Choisir...</option>';
+    sbSecondPointToConnect.innerHTML =
+      '<option value="" disabled>Choisir...</option>';
+
+    this.pointManager.points.forEach((p) => {
+      const opt1 = document.createElement("option");
       opt1.value = p.id;
       opt1.textContent = p.description;
       sbFirstPointToConnect.appendChild(opt1);
 
-      const opt2 = document.createElement('option');
+      const opt2 = document.createElement("option");
       opt2.value = p.id;
       opt2.textContent = p.description;
-      sbSecondPointToConnect.appendChild(opt2);    
+      sbSecondPointToConnect.appendChild(opt2);
     });
 
-    // Activer/désactiver le bouton selon les choix
     const checkSelection = () => {
       const id1 = parseInt(sbFirstPointToConnect.value);
       const id2 = parseInt(sbSecondPointToConnect.value);
       sbConnectBtn.disabled = !(id1 && id2 && id1 !== id2);
     };
 
-    sbFirstPointToConnect.addEventListener('change', () => {
-      checkSelection();
-    });
-
-    sbSecondPointToConnect.addEventListener('change', () => {
-      checkSelection();
-    });
+    sbFirstPointToConnect.addEventListener("change", checkSelection);
+    sbSecondPointToConnect.addEventListener("change", checkSelection);
   }
 
-  disabledDeleteSelectionButton(value){
-    if(!value){
-      tbDeleteBtn.disabled = value;
+  startCircleAtPoint(centerPoint) {
+    const map = this.map;
+  
+    // état
+    this.circleTool.center = centerPoint;
+  
+    // cercle temporaire (bordure seule)
+    this.circleTool.tempCircle = L.circle([centerPoint.latitude, centerPoint.longitude], {
+      radius: 0,
+      color: centerPoint.color,
+      weight: 2,
+      fillOpacity: 0,
+      // Let clicks pass through to underlying point markers during preview
+      interactive: false,
+      bubblingMouseEvents: false,
+    }).addTo(map);
+  
+    // label HTML
+    const label = document.createElement("div");
+    label.className = "radius-label";
+    Object.assign(label.style, {
+      position: "absolute",
+      background: "white",
+      border: "1px solid #ccc",
+      borderRadius: "4px",
+      padding: "2px 6px",
+      fontSize: "12px",
+      pointerEvents: "none",
+      zIndex: "9999"
+    });
+    document.body.appendChild(label);
+    this.circleTool.labelEl = label;
+  
+    // suivi souris
+    const moveHandler = (e) => {
+      if (!this.circleTool.tempCircle) return;
+      const latlng = e.latlng;
+      const r = map.distance(latlng, [centerPoint.latitude, centerPoint.longitude]);
+      this.circleTool.tempCircle.setRadius(r);
+  
+      label.textContent = `${Math.round(r)} m`;
+      const pos = map.latLngToContainerPoint(latlng);
+      label.style.left = `${pos.x + 15}px`;
+      label.style.top  = `${pos.y + 15}px`;
+      label.style.display = "block";
+    };
+    map.on("mousemove", moveHandler);
+    this.circleTool.moveHandler = moveHandler;
+  }
+  
+  
+  // validation par clic sur la carte (latlng arbitraire)
+validateCircle(e) {
+  if (!this.circleTool.active || !this.circleTool.center || !this.circleTool.tempCircle) return;
+  const c = this.circleTool.center;
+  const r = this.map.distance([c.latitude, c.longitude], e.latlng);
+  this._finalizeCircle(r);
+}
+
+// validation par clic sur un 2e point (centre → point2)
+finalizeCircleWithPoint(point2) {
+  if (!this.circleTool.active || !this.circleTool.center || !this.circleTool.tempCircle) return;
+  if (point2 === this.circleTool.center) return; // rien à faire
+  const c = this.circleTool.center;
+  const r = this.map.distance([c.latitude, c.longitude], [point2.latitude, point2.longitude]);
+  this._finalizeCircle(r);
+}
+
+// factorisation
+_finalizeCircle(radius) {
+  // retirer mousemove
+  if (this.circleTool.moveHandler) {
+    this.map.off("mousemove", this.circleTool.moveHandler);
+  }
+
+  // enlever label
+  if (this.circleTool.labelEl) {
+    this.circleTool.labelEl.remove();
+  }
+
+  // enlever cercle temporaire
+  if (this.circleTool.tempCircle) {
+    this.circleTool.tempCircle.remove();
+  }
+
+  // créer cercle persistant (stocké) — bordure seule
+  const c = this.circleTool.center;
+  this.circleManager.addCircle(radius, c.latitude, c.longitude, c.color, true);
+
+  // reset état de traçage (outil reste actif, prêt pour un nouveau cercle)
+  this.circleTool.center = null;
+  this.circleTool.tempCircle = null;
+  this.circleTool.moveHandler = null;
+  this.circleTool.labelEl = null;
+
+  // redraw
+  this.redraw();
+}
+
+  
+  cleanupActiveCircle() {
+    if (this.activeCircle) {
+      this.map.off("mousemove", this.activeCircle._onMouseMove);
+      this.activeCircle.remove();
+      this.activeCircle = null;
     }
-    else{
-      if (!this.lineManager.hasSelectedLine() && !this.pointManager.hasSelectedPoint()){
-        tbDeleteBtn.disabled = value
+    if (this.radiusLabel) {
+      this.radiusLabel.remove();
+      this.radiusLabel = null;
+    }
+  }
+
+  handlePointClick(point, e) {
+    // 1) Mode gomme
+    if (this.isEraseMode) {
+      // même logique que dans redraw() quand eraseMode=true
+      const linesToRemove = this.lineManager.getLinesWithPoint(point);
+      linesToRemove.forEach(line => this.lineManager.removeLine(line.startPoint, line.endPoint, true));
+      this.pointManager.removePoint(point, true);
+      this.selection.remove(point);
+      this.redraw();
+      this.setUpPointsList();
+      this.setUpPointsToConnect();
+      return;
+    }
+  
+    // 2) Mode cercle
+    if (this.circleTool.active) {
+      // a) pas encore de centre -> on commence à ce point
+      if (!this.circleTool.center) {
+        this.startCircleAtPoint(point);
+        return;
+      }
+  
+      // b) on a déjà un centre, on clique sur un 2e point différent -> finaliser avec p2
+      if (this.circleTool.center !== point) {
+        this.finalizeCircleWithPoint(point);
+        return;
+      }
+  
+      // c) on reclique sur le même centre -> ignorer (continuer le dimensionnement)
+      return;
+    }
+  
+    // 3) Mode normal : sélection / connect
+    this.selection.toggle(point);
+    this.redraw();
+    this.disabledDeleteSelectionButton(!this.selection.hasSelection());
+  
+    if (this.connectMode) {
+      const selectedPoints = this.selection.getAll().filter(e => e instanceof Point);
+      if (selectedPoints.length >= 2) {
+        const last = selectedPoints[selectedPoints.length - 1];
+        const prev = selectedPoints[selectedPoints.length - 2];
+  
+        const already = this.lineManager.lines.some(
+          l => (l.startPoint === last && l.endPoint === prev) ||
+               (l.startPoint === prev && l.endPoint === last)
+        );
+        if (!already) {
+          this.lineManager.addLine(prev, last, true);
+          this.redraw();
+        }
       }
     }
   }
-
-  setUpToolbar(){    
-    this.disabledDeleteSelectionButton(true)
-
-    tbDeleteBtn.addEventListener('click', () => {
-      this.removeSelection()
-    })
-  }
-
-  showLineConfigPanel(line) { /* ... */ }
-  hideLineConfigPanel() { /* ... */ }
-  showPointCreationModal(callback) { /* ... */ }
-  showCircleConfigPanel(circle) { /* ... */ }
+  
 }
 
 export default UIManager;

@@ -1,9 +1,9 @@
 /* Navbar variables */
 const navbarSection = document.getElementById('navbarNav');
 // Show/hide distance button
-const nbDistanceBtn = document.getElementById('toggle-measure');
+// const nbDistanceBtn = document.getElementById('toggle-measure');
 // Target button
-const nbTargetBtn = document.getElementById('add-point-button');
+// const nbTargetBtn = document.getElementById('add-point-button');
 
 /* Sidebar */
 const sidebarSection = document.getElementById('sidebar');
@@ -13,6 +13,7 @@ const sbNewPointDescriptionInput = document.getElementById('new-desc');
 const sbNewPointCoordinatesInput = document.getElementById('new-coords');
 const sbNewPointErrorMsg = document.getElementById('coord-feedback');
 const sbNewPointColorInput = document.getElementById('new-color');
+const sbNewPointAddButton = document.getElementById('add-point-form-btn');
 // Points list section
 const sbPointsList = document.getElementById('point-list');
 // Connect points section
@@ -33,3 +34,8 @@ const iemErrorMsg = document.getElementById('import-feedback');
 
 /* Toolbar */
 const tbDeleteBtn = document.getElementById('delete-btn');
+const tbAddLineBtn = document.getElementById('add-line-btn');
+const tbEraseBtn = document.getElementById('erase-btn');
+const tbDistanceBtn = document.getElementById('show-distances-btn');
+const tbNameBtn = document.getElementById('show-names-btn');
+const tbAddCircleBtn = document.getElementById('circle-btn');
