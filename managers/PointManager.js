@@ -22,10 +22,12 @@ class PointManager {
     if(idt === null){
       idt = this._points.length > 0 ? this._points[this._points.length - 1].id + 1 : 1;
     }
-    this._points.push(new Point(idt, desc, lat, lng, color));
-    if(save){
+    const p = new Point(idt, desc, lat, lng, color);
+    this._points.push(p);
+    if (save) {
       this.saveToStorage();
     }
+    return p;
   }
 
   removePoint(point, save = false) {

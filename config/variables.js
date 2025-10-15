@@ -39,3 +39,4 @@ const tbEraseBtn = document.getElementById('erase-btn');
 const tbDistanceBtn = document.getElementById('show-distances-btn');
 const tbNameBtn = document.getElementById('show-names-btn');
 const tbAddCircleBtn = document.getElementById('circle-btn');
+const tbAddPointBtn = document.getElementById('add-point-btn');

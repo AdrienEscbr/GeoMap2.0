@@ -49,12 +49,12 @@ class Renderer {
         [line.startPoint.latitude, line.startPoint.longitude],
         [line.endPoint.latitude, line.endPoint.longitude],
       ],
-      { color, weight: 3 }
+      { color, weight: 3, steps: 256 }
     ).addTo(this.map);
 
     poly.on('click', (e) => {
       L.DomEvent.stopPropagation(e);
-      onClick(line);
+      onClick && onClick(line, e);
     });
 
     this.layers.set(line, poly);
@@ -78,7 +78,7 @@ class Renderer {
 
     marker.on('click', (e) => {
       L.DomEvent.stopPropagation(e);
-      onClick(circle);
+      onClick && onClick(circle, e);
     });
 
     this.layers.set(circle, marker);
