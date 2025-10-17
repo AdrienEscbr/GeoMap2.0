@@ -25,14 +25,17 @@ class UIManager {
     this.showDistances = false;
     this.showNames = false;
     this.circleCreationMode = false;
+    this.stretchMode = false;
+    this.stretchLayers = []; // pour stocker les lignes fantômes affichées
+
     // this.activeCircle = null; // cercle temporaire pendant le redimensionnement
     // this.radiusLabel = null;  // label HTML qui suit la souris
     this.circleTool = {
-      active: false,      // bouton actif/inactif
-      center: null,       // Point choisi comme centre
-      tempCircle: null,   // L.circle temporaire
-      moveHandler: null,  // listener mousemove
-      labelEl: null       // div du label "NNN m"
+      active: false, // bouton actif/inactif
+      center: null, // Point choisi comme centre
+      tempCircle: null, // L.circle temporaire
+      moveHandler: null, // listener mousemove
+      labelEl: null, // div du label "NNN m"
     };
 
     this.addPointMode = false;
@@ -40,9 +43,7 @@ class UIManager {
     this.ghostMarker = null;
     this.nextPointIndex = this.pointManager.points.length + 1;
     this.snapTolerance = 100000; // mètres (tolérance d'aimantation)
-    this.mouseLabel = null;  // label qui affiche les coordonnÃ©es
-    
-    
+    this.mouseLabel = null; // label qui affiche les coordonnÃ©es
 
     // Initialisation UI
     this.setUpAddPointMode();
@@ -60,21 +61,23 @@ class UIManager {
     this.map.on("click", (e) => {
       if (this.addPointMode) return;
       // cercle en cours à valider sur latlng
-      if (this.circleTool.active && this.circleTool.center && this.circleTool.tempCircle) {
+      if (
+        this.circleTool.active &&
+        this.circleTool.center &&
+        this.circleTool.tempCircle
+      ) {
         this.validateCircle(e);
         return;
       }
-    
+
       // le reste : comme avant
       if (this.connectMode || this.isEraseMode) return;
       if (!this.selection.hasSelection()) return;
-    
+
       this.selection.clear();
       this.redraw();
       this.disabledDeleteSelectionButton(true);
     });
-    
-    
   }
 
   // Redessine tout
@@ -89,9 +92,16 @@ class UIManager {
         // En mode ajout de points: crÃ©er un point au clic sur le bord
         if (this.addPointMode && e && e.latlng) {
           const snapped = this.getSnappedLatLngImproved(e.latlng);
-          const desc  = `Nouveau point ${this.pointManager.points.length + 1}`;
+          const desc = `Nouveau point ${this.pointManager.points.length + 1}`;
           const color = "#3388ff";
-          this.pointManager.addPoint(null, desc, snapped.lat, snapped.lng, color, true);
+          this.pointManager.addPoint(
+            null,
+            desc,
+            snapped.lat,
+            snapped.lng,
+            color,
+            true
+          );
           this.redraw();
           this.setUpPointsList();
           this.setUpPointsToConnect();
@@ -113,31 +123,47 @@ class UIManager {
 
     // Lignes
     this.lineManager.lines.forEach((l) => {
-      this.renderer.drawLine(l, this.selection.isSelected(l), (line, e) => {
-        // En mode ajout de points: crÃ©er un point directement sur la ligne cliquÃ©e
-        if (this.addPointMode && e && e.latlng) {
-          const snapped = this.getSnappedLatLngImproved(e.latlng);
-          const desc  = `Nouveau point ${this.pointManager.points.length + 1}`;
-          const color = "#3388ff";
-          this.pointManager.addPoint(null, desc, snapped.lat, snapped.lng, color, true);
-          this.redraw();
-          this.setUpPointsList();
-          this.setUpPointsToConnect();
-          return;
-        }
-        if (this.isEraseMode) {
-          this.lineManager.removeLine(line.startPoint, line.endPoint, true);
-          this.redraw();
-          this.setUpPointsList();
-          this.setUpPointsToConnect();
-          return;
-        }
+      this.renderer.drawLine(
+        l,
+        this.selection.isSelected(l),
+        (line, e) => {
+          // En mode ajout de points: crÃ©er un point directement sur la ligne cliquÃ©e
+          if (this.addPointMode && e && e.latlng) {
+            const snapped = this.getSnappedLatLngImproved(e.latlng);
+            const desc = `Nouveau point ${this.pointManager.points.length + 1}`;
+            const color = "#3388ff";
+            this.pointManager.addPoint(
+              null,
+              desc,
+              snapped.lat,
+              snapped.lng,
+              color,
+              true
+            );
+            this.redraw();
+            this.setUpPointsList();
+            this.setUpPointsToConnect();
+            return;
+          }
+          if (this.isEraseMode) {
+            this.lineManager.removeLine(line.startPoint, line.endPoint, true);
+            this.redraw();
+            this.setUpPointsList();
+            this.setUpPointsToConnect();
+            return;
+          }
 
-        this.selection.toggle(line);
-        this.redraw();
-        this.disabledDeleteSelectionButton(!this.selection.hasSelection());
-      }, 
-      this.showDistances
+          // === Mode stretch actif ===
+          if (this.stretchMode) {
+            this.showStretchedGeodesic(line);
+            return;
+          }
+
+          this.selection.toggle(line);
+          this.redraw();
+          this.disabledDeleteSelectionButton(!this.selection.hasSelection());
+        },
+        this.showDistances
       );
     });
 
@@ -193,79 +219,84 @@ class UIManager {
           }
         }
       });
-      if(this.showNames){
+      if (this.showNames) {
         this.renderer.addNameLabel(p);
       }
     });
   }
 
   setUpDistanceToggle() {
-    tbDistanceBtn.addEventListener('click', () => {
+    tbDistanceBtn.addEventListener("click", () => {
       this.showDistances = !this.showDistances;
-      
-      if(this.showDistances){
+
+      if (this.showDistances) {
         tbDistanceBtn.classList.add("active");
+      } else {
+        tbDistanceBtn.classList.remove("active");
       }
-      else{
-        tbDistanceBtn.classList.remove("active")
-      }
-  
+
       this.redraw();
     });
   }
-  
 
   // === Toolbar ===
   disabledDeleteSelectionButton(value) {
     tbDeleteBtn.disabled = value;
+    tbChangeColorBtn.disabled = !this.selection.hasSelection();
   }
 
   setUpAddPointForm() {
-    sbNewPointFormContainer.addEventListener('submit', (e) => {
+    sbNewPointFormContainer.addEventListener("submit", (e) => {
       e.preventDefault();
-  
+
       // Nettoyer tout ancien message d’erreur
-      sbNewPointErrorMsg.innerHTML = '';
-  
+      sbNewPointErrorMsg.innerHTML = "";
+
       // Récupération des valeurs
       const desc = sbNewPointDescriptionInput.value.trim();
       const coordStr = sbNewPointCoordinatesInput.value.trim();
       const color = sbNewPointColorInput.value;
-  
+
       // Vérification format "lat, lng"
-      const parts = coordStr.split(',');
+      const parts = coordStr.split(",");
       if (parts.length !== 2) {
         sbNewPointErrorMsg.innerHTML =
           '<div class="text-danger">Erreur : veuillez saisir “latitude, longitude” séparées par une virgule.</div>';
         return;
       }
-  
+
       // Conversion
       const lat = parseFloat(parts[0].trim());
       const lng = parseFloat(parts[1].trim());
-  
+
       // Validation numérique
-      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      if (
+        isNaN(lat) ||
+        isNaN(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+      ) {
         sbNewPointErrorMsg.innerHTML =
           '<div class="text-danger">Erreur : latitude doit être entre -90 et 90, longitude entre -180 et 180.</div>';
         return;
       }
-  
+
       // Ajout du point via PointManager
       this.pointManager.addPoint(null, desc, lat, lng, color, true);
-  
+
       // Rafraîchissement de l’UI
       this.redraw();
       this.setUpPointsList();
       this.setUpPointsToConnect();
-  
+
       // Réinitialisation du formulaire
       sbNewPointFormContainer.reset();
-      sbNewPointErrorMsg.innerHTML = '';
+      sbNewPointErrorMsg.innerHTML = "";
       sbNewPointColorInput.value = color; // garde la dernière couleur utilisée
     });
   }
-  
 
   setUpEraseTool() {
     tbEraseBtn.addEventListener("click", () => {
@@ -314,10 +345,9 @@ class UIManager {
     tbAddLineBtn.addEventListener("click", () => {
       this.connectMode = !this.connectMode;
 
-      if(this.connectMode){
+      if (this.connectMode) {
         tbAddLineBtn.classList.add("active");
-      }
-      else{
+      } else {
         tbAddLineBtn.classList.remove("active");
       }
 
@@ -350,16 +380,15 @@ class UIManager {
 
     tbNameBtn.addEventListener("click", () => {
       this.showNames = !this.showNames;
-    
-      if(this.showNames){
+
+      if (this.showNames) {
         tbNameBtn.classList.add("active");
-      }
-      else{
+      } else {
         tbNameBtn.classList.remove("active");
       }
-    
+
       if (this.showNames) {
-        this.pointManager.points.forEach(p => this.renderer.addNameLabel(p));
+        this.pointManager.points.forEach((p) => this.renderer.addNameLabel(p));
       } else {
         this.renderer.clearNameLabels();
       }
@@ -368,9 +397,9 @@ class UIManager {
     // === Bouton pour créer des cercles ===
     tbAddCircleBtn.addEventListener("click", () => {
       this.circleTool.active = !this.circleTool.active;
-    
+
       tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
-    
+
       if (this.circleTool.active) {
         this.isEraseMode = false;
         this.connectMode = false;
@@ -378,7 +407,8 @@ class UIManager {
       } else {
         this.map.getContainer().style.cursor = "auto";
         // annuler un cercle en cours (si l'utilisateur désactive au milieu)
-        if (this.circleTool.moveHandler) this.map.off("mousemove", this.circleTool.moveHandler);
+        if (this.circleTool.moveHandler)
+          this.map.off("mousemove", this.circleTool.moveHandler);
         if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
         if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
         this.circleTool.center = null;
@@ -387,9 +417,21 @@ class UIManager {
         this.circleTool.labelEl = null;
       }
     });
-    
 
-    
+    tbChangeColorBtn.addEventListener("click", () => {
+      if (!this.selection.hasSelection()) return;
+      this.showColorOverlay();
+    });
+
+    tbStretchLineBtn.addEventListener("click", () => {
+      this.stretchMode = !this.stretchMode;
+      tbStretchLineBtn.classList.toggle("active", this.stretchMode);
+
+      if (!this.stretchMode) {
+        // On désactive → nettoyage
+        this.clearStretchLines();
+      }
+    });
   }
 
   // === Import/Export modal ===
@@ -579,21 +621,24 @@ class UIManager {
 
   startCircleAtPoint(centerPoint) {
     const map = this.map;
-  
+
     // état
     this.circleTool.center = centerPoint;
-  
+
     // cercle temporaire (bordure seule)
-    this.circleTool.tempCircle = L.circle([centerPoint.latitude, centerPoint.longitude], {
-      radius: 0,
-      color: centerPoint.color,
-      weight: 2,
-      fillOpacity: 0,
-      // Let clicks pass through to underlying point markers during preview
-      interactive: false,
-      bubblingMouseEvents: false,
-    }).addTo(map);
-  
+    this.circleTool.tempCircle = L.circle(
+      [centerPoint.latitude, centerPoint.longitude],
+      {
+        radius: 0,
+        color: centerPoint.color,
+        weight: 2,
+        fillOpacity: 0,
+        // Let clicks pass through to underlying point markers during preview
+        interactive: false,
+        bubblingMouseEvents: false,
+      }
+    ).addTo(map);
+
     // label HTML
     const label = document.createElement("div");
     label.className = "radius-label";
@@ -605,78 +650,98 @@ class UIManager {
       padding: "2px 6px",
       fontSize: "12px",
       pointerEvents: "none",
-      zIndex: "9999"
+      zIndex: "9999",
     });
     document.body.appendChild(label);
     this.circleTool.labelEl = label;
-  
+
     // suivi souris
     const moveHandler = (e) => {
       if (!this.circleTool.tempCircle) return;
       const latlng = e.latlng;
-      const r = map.distance(latlng, [centerPoint.latitude, centerPoint.longitude]);
+      const r = map.distance(latlng, [
+        centerPoint.latitude,
+        centerPoint.longitude,
+      ]);
       this.circleTool.tempCircle.setRadius(r);
-  
+
       label.textContent = `${Math.round(r)} m`;
       const pos = map.latLngToContainerPoint(latlng);
       label.style.left = `${pos.x + 15}px`;
-      label.style.top  = `${pos.y + 15}px`;
+      label.style.top = `${pos.y + 15}px`;
       label.style.display = "block";
     };
     map.on("mousemove", moveHandler);
     this.circleTool.moveHandler = moveHandler;
   }
-  
-  
+
   // validation par clic sur la carte (latlng arbitraire)
-validateCircle(e) {
-  if (!this.circleTool.active || !this.circleTool.center || !this.circleTool.tempCircle) return;
-  const c = this.circleTool.center;
-  const r = this.map.distance([c.latitude, c.longitude], e.latlng);
-  this._finalizeCircle(r);
-}
-
-// validation par clic sur un 2e point (centre → point2)
-finalizeCircleWithPoint(point2) {
-  if (!this.circleTool.active || !this.circleTool.center || !this.circleTool.tempCircle) return;
-  if (point2 === this.circleTool.center) return; // rien à faire
-  const c = this.circleTool.center;
-  const r = this.map.distance([c.latitude, c.longitude], [point2.latitude, point2.longitude]);
-  this._finalizeCircle(r);
-}
-
-// factorisation
-_finalizeCircle(radius) {
-  // retirer mousemove
-  if (this.circleTool.moveHandler) {
-    this.map.off("mousemove", this.circleTool.moveHandler);
+  validateCircle(e) {
+    if (
+      !this.circleTool.active ||
+      !this.circleTool.center ||
+      !this.circleTool.tempCircle
+    )
+      return;
+    const c = this.circleTool.center;
+    const r = this.map.distance([c.latitude, c.longitude], e.latlng);
+    this._finalizeCircle(r);
   }
 
-  // enlever label
-  if (this.circleTool.labelEl) {
-    this.circleTool.labelEl.remove();
+  // validation par clic sur un 2e point (centre → point2)
+  finalizeCircleWithPoint(point2) {
+    if (
+      !this.circleTool.active ||
+      !this.circleTool.center ||
+      !this.circleTool.tempCircle
+    )
+      return;
+    if (point2 === this.circleTool.center) return; // rien à faire
+    const c = this.circleTool.center;
+    const r = this.map.distance(
+      [c.latitude, c.longitude],
+      [point2.latitude, point2.longitude]
+    );
+    this._finalizeCircle(r);
   }
 
-  // enlever cercle temporaire
-  if (this.circleTool.tempCircle) {
-    this.circleTool.tempCircle.remove();
+  // factorisation
+  _finalizeCircle(radius) {
+    // retirer mousemove
+    if (this.circleTool.moveHandler) {
+      this.map.off("mousemove", this.circleTool.moveHandler);
+    }
+
+    // enlever label
+    if (this.circleTool.labelEl) {
+      this.circleTool.labelEl.remove();
+    }
+
+    // enlever cercle temporaire
+    if (this.circleTool.tempCircle) {
+      this.circleTool.tempCircle.remove();
+    }
+
+    // créer cercle persistant (stocké) — bordure seule
+    const c = this.circleTool.center;
+    this.circleManager.addCircle(
+      radius,
+      c.latitude,
+      c.longitude,
+      c.color,
+      true
+    );
+
+    // reset état de traçage (outil reste actif, prêt pour un nouveau cercle)
+    this.circleTool.center = null;
+    this.circleTool.tempCircle = null;
+    this.circleTool.moveHandler = null;
+    this.circleTool.labelEl = null;
+
+    // redraw
+    this.redraw();
   }
 
-  // créer cercle persistant (stocké) — bordure seule
-  const c = this.circleTool.center;
-  this.circleManager.addCircle(radius, c.latitude, c.longitude, c.color, true);
-
-  // reset état de traçage (outil reste actif, prêt pour un nouveau cercle)
-  this.circleTool.center = null;
-  this.circleTool.tempCircle = null;
-  this.circleTool.moveHandler = null;
-  this.circleTool.labelEl = null;
-
-  // redraw
-  this.redraw();
-}
-
-  
   cleanupActiveCircle() {
     if (this.activeCircle) {
       this.map.off("mousemove", this.activeCircle._onMouseMove);
@@ -694,7 +759,9 @@ _finalizeCircle(radius) {
     if (this.isEraseMode) {
       // même logique que dans redraw() quand eraseMode=true
       const linesToRemove = this.lineManager.getLinesWithPoint(point);
-      linesToRemove.forEach(line => this.lineManager.removeLine(line.startPoint, line.endPoint, true));
+      linesToRemove.forEach((line) =>
+        this.lineManager.removeLine(line.startPoint, line.endPoint, true)
+      );
       this.pointManager.removePoint(point, true);
       this.selection.remove(point);
       this.redraw();
@@ -702,7 +769,7 @@ _finalizeCircle(radius) {
       this.setUpPointsToConnect();
       return;
     }
-  
+
     // 2) Mode cercle
     if (this.circleTool.active) {
       // a) pas encore de centre -> on commence à ce point
@@ -710,31 +777,34 @@ _finalizeCircle(radius) {
         this.startCircleAtPoint(point);
         return;
       }
-  
+
       // b) on a déjà un centre, on clique sur un 2e point différent -> finaliser avec p2
       if (this.circleTool.center !== point) {
         this.finalizeCircleWithPoint(point);
         return;
       }
-  
+
       // c) on reclique sur le même centre -> ignorer (continuer le dimensionnement)
       return;
     }
-  
+
     // 3) Mode normal : sélection / connect
     this.selection.toggle(point);
     this.redraw();
     this.disabledDeleteSelectionButton(!this.selection.hasSelection());
-  
+
     if (this.connectMode) {
-      const selectedPoints = this.selection.getAll().filter(e => e instanceof Point);
+      const selectedPoints = this.selection
+        .getAll()
+        .filter((e) => e instanceof Point);
       if (selectedPoints.length >= 2) {
         const last = selectedPoints[selectedPoints.length - 1];
         const prev = selectedPoints[selectedPoints.length - 2];
-  
+
         const already = this.lineManager.lines.some(
-          l => (l.startPoint === last && l.endPoint === prev) ||
-               (l.startPoint === prev && l.endPoint === last)
+          (l) =>
+            (l.startPoint === last && l.endPoint === prev) ||
+            (l.startPoint === prev && l.endPoint === last)
         );
         if (!already) {
           this.lineManager.addLine(prev, last, true);
@@ -746,17 +816,17 @@ _finalizeCircle(radius) {
 
   startAddPointMode() {
     const map = this.map;
-  
+
     // Ghost marker
-    this.ghostMarker = L.circleMarker([0,0], {
+    this.ghostMarker = L.circleMarker([0, 0], {
       radius: 6,
       color: "#000",
       fillColor: "#ff0",
       fillOpacity: 0.6,
       opacity: 0.8,
-      interactive: false
+      interactive: false,
     }).addTo(map);
-  
+
     // Label coord
     this.mouseLabel = document.createElement("div");
     this.mouseLabel.className = "coord-label";
@@ -770,18 +840,18 @@ _finalizeCircle(radius) {
       pointerEvents: "none",
       boxShadow: "0 1px 4px rgba(0,0,0,.2)",
       transform: "translate(12px, 12px)",
-      zIndex: "9999"
+      zIndex: "9999",
     });
     document.body.appendChild(this.mouseLabel);
-  
+
     // Handlers
     this._onMouseMoveAddPoint = (e) => this.handleMouseMoveAddPoint(e);
-    this._onClickAddPoint     = (e) => this.handleClickAddPoint(e);
-  
+    this._onClickAddPoint = (e) => this.handleClickAddPoint(e);
+
     map.on("mousemove", this._onMouseMoveAddPoint);
     map.on("click", this._onClickAddPoint);
   }
-  
+
   stopAddPointMode() {
     const map = this.map;
     if (this.ghostMarker) {
@@ -795,43 +865,61 @@ _finalizeCircle(radius) {
     map.off("mousemove", this._onMouseMoveAddPoint);
     map.off("click", this._onClickAddPoint);
   }
-  
+
   handleMouseMoveAddPoint(e) {
     if (!this.ghostMarker || !this.mouseLabel) return;
 
     const snapped = this.getSnappedLatLngImproved(e.latlng);
-    this.ghostMarker.setLatLng(snapped);
-  
-    const pos = this.map.latLngToContainerPoint(snapped);
-    this.mouseLabel.style.left = `${pos.x}px`;
-    this.mouseLabel.style.top  = `${pos.y}px`;
-    this.mouseLabel.innerText  = `${snapped.lat.toFixed(5)}, ${snapped.lng.toFixed(5)}`;
+    if (snapped && snapped.lat != null && snapped.lng != null) {
+      this.ghostMarker.setLatLng(snapped);
+      const pos = this.map.latLngToContainerPoint(snapped);
+      this.mouseLabel.style.left = `${pos.x}px`;
+      this.mouseLabel.style.top = `${pos.y}px`;
+      this.mouseLabel.innerText = `${snapped.lat.toFixed(5)}, ${snapped.lng.toFixed(5)}`;
+    }
   }
-  
-  
+
   handleClickAddPoint(e) {
     const snapped = this.getSnappedLatLngImproved(e.latlng);
-    const desc  = `Nouveau point ${this.pointManager.points.length + 1}`;
+    if (!snapped || snapped.lat == null || snapped.lng == null) return;
+    const desc = `Nouveau point ${this.pointManager.points.length + 1}`;
     const color = "#3388ff";
     // Vérifie si on est suffisamment proche d'une ligne géodésique
     const near = this.getNearestLineInfo(e.latlng);
     if (near && near.dist <= this.snapTolerance && near.line) {
       // 1) Créer le point
-      const newPoint = this.pointManager.addPoint(null, desc, snapped.lat, snapped.lng, color, true);
+      const newPoint = this.pointManager.addPoint(
+        null,
+        desc,
+        snapped.lat,
+        snapped.lng,
+        color,
+        true
+      );
       // 2) Scinder la ligne en deux
-      this.lineManager.removeLine(near.line.startPoint, near.line.endPoint, true);
+      this.lineManager.removeLine(
+        near.line.startPoint,
+        near.line.endPoint,
+        true
+      );
       this.lineManager.addLine(near.line.startPoint, newPoint, true);
       this.lineManager.addLine(newPoint, near.line.endPoint, true);
     } else {
       // Création simple
-      this.pointManager.addPoint(null, desc, snapped.lat, snapped.lng, color, true);
+      this.pointManager.addPoint(
+        null,
+        desc,
+        snapped.lat,
+        snapped.lng,
+        color,
+        true
+      );
     }
     this.redraw();
     this.setUpPointsList();
     this.setUpPointsToConnect();
   }
-  
-  
+
   getSnappedLatLng(cursorLatLng) {
     return this.getSnappedLatLngImproved(cursorLatLng);
   }
@@ -841,13 +929,14 @@ _finalizeCircle(radius) {
     let bestLine = null;
     let bestDist = Infinity;
     let bestPt = null;
-    this.lineManager.lines.forEach(line => {
+    this.lineManager.lines.forEach((line) => {
       const layer = this.renderer.layers.get(line);
-      if (!layer || typeof layer.getLatLngs !== 'function') return;
+      if (!layer || typeof layer.getLatLngs !== "function") return;
       let latlngs = layer.getLatLngs();
       if (!latlngs || latlngs.length === 0) return;
-      if (Array.isArray(latlngs[0]) && latlngs.length === 1) latlngs = latlngs[0];
-      latlngs.forEach(pt => {
+      if (Array.isArray(latlngs[0]) && latlngs.length === 1)
+        latlngs = latlngs[0];
+      latlngs.forEach((pt) => {
         const d = map.distance(cursorLatLng, pt);
         if (d < bestDist) {
           bestDist = d;
@@ -861,14 +950,14 @@ _finalizeCircle(radius) {
     }
     return null;
   }
-  
-  
 
   setUpAddPointMode() {
-    tbAddPointBtn.addEventListener('click', () => {
+    tbAddPointBtn.addEventListener("click", () => {
       this.addPointMode = !this.addPointMode;
       tbAddPointBtn.classList.toggle("active", this.addPointMode);
-      this.map.getContainer().style.cursor = this.addPointMode ? "crosshair" : "auto";
+      this.map.getContainer().style.cursor = this.addPointMode
+        ? "crosshair"
+        : "auto";
 
       if (this.addPointMode) {
         // DÃ©sactiver les autres modes pour Ã©viter conflits
@@ -882,7 +971,8 @@ _finalizeCircle(radius) {
         }
         if (this.circleTool.active) {
           // Nettoyer le mode cercle
-          if (this.circleTool.moveHandler) this.map.off("mousemove", this.circleTool.moveHandler);
+          if (this.circleTool.moveHandler)
+            this.map.off("mousemove", this.circleTool.moveHandler);
           if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
           if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
           this.circleTool.center = null;
@@ -901,92 +991,283 @@ _finalizeCircle(radius) {
 
   // Nouvelle version amÃ©liorÃ©e du snapping (segments + cercle)
   getSnappedLatLngImproved(cursorLatLng) {
-  const map = this.map;
-  const TOL = this.snapTolerance; // mètres
-  let best = cursorLatLng;
-  let bestDist = Infinity;
-
-  // Lignes géodésiques: choisir le vertex le plus proche (comme dans test.html)
-  this.lineManager.lines.forEach(line => {
-    const layer = this.renderer.layers.get(line);
-    if (!layer || typeof layer.getLatLngs !== 'function') return;
-    let latlngs = layer.getLatLngs();
-    if (!latlngs || latlngs.length === 0) return;
-    if (Array.isArray(latlngs[0]) && latlngs.length === 1) latlngs = latlngs[0];
-    latlngs.forEach(pt => {
-      const d = map.distance(cursorLatLng, pt);
-      if (d < bestDist && d < TOL) {
-        best = pt;
-        bestDist = d;
+    const map = this.map;
+    const TOL = this.snapTolerance; // mètres
+    if (!cursorLatLng || cursorLatLng.lat == null || cursorLatLng.lng == null)
+      return cursorLatLng; // sécurité
+  
+    let best = cursorLatLng;
+    let bestDist = Infinity;
+  
+    // --- Lignes réelles ---
+    this.lineManager.lines.forEach((line) => {
+      const layer = this.renderer.layers.get(line);
+      if (!layer || typeof layer.getLatLngs !== "function") return;
+      let latlngs = layer.getLatLngs();
+      if (!latlngs || latlngs.length === 0) return;
+      if (Array.isArray(latlngs[0])) {
+        if (typeof latlngs.flat === "function") {
+          latlngs = latlngs.flat(Infinity);
+        } else {
+          const stack = [...latlngs];
+          latlngs = [];
+          while (stack.length) {
+            const item = stack.shift();
+            if (Array.isArray(item)) stack.push(...item);
+            else latlngs.push(item);
+          }
+        }
+      }
+  
+      latlngs.forEach((pt) => {
+        if (!pt || pt.lat == null || pt.lng == null) return; // ← sécurité
+        const d = map.distance(cursorLatLng, pt);
+        if (d < bestDist && d < TOL) {
+          best = pt;
+          bestDist = d;
+        }
+      });
+    });
+  
+    // --- Lignes fantômes actives (stretch mode) ---
+    if (this.stretchLayers && this.stretchLayers.length > 0) {
+      this.stretchLayers.forEach((layer) => {
+        if (!layer || typeof layer.getLatLngs !== "function") return;
+        let latlngs = layer.getLatLngs();
+        if (!latlngs || latlngs.length === 0) return;
+        if (Array.isArray(latlngs[0])) {
+          if (typeof latlngs.flat === "function") {
+            latlngs = latlngs.flat(Infinity);
+          } else {
+            const stack = [...latlngs];
+            latlngs = [];
+            while (stack.length) {
+              const item = stack.shift();
+              if (Array.isArray(item)) stack.push(...item);
+              else latlngs.push(item);
+            }
+          }
+        }
+  
+        latlngs.forEach((pt) => {
+          if (!pt || pt.lat == null || pt.lng == null) return; // ← sécurité
+          const d = map.distance(cursorLatLng, pt);
+          if (d < bestDist && d < TOL) {
+            best = pt;
+            bestDist = d;
+          }
+        });
+      });
+    }
+  
+    // --- Cercles ---
+    this.circleManager.circles.forEach((c) => {
+      if (!c || c.latitude == null || c.longitude == null || c.radius == null) return;
+      const center = L.latLng(c.latitude, c.longitude);
+      const dCenter = map.distance(center, cursorLatLng);
+      const diff = Math.abs(dCenter - c.radius);
+      if (diff < TOL && diff < bestDist) {
+        const R = 6371000;
+        const phi1 = (Math.PI / 180) * center.lat;
+        const lambda1 = (Math.PI / 180) * center.lng;
+        const phib = (Math.PI / 180) * cursorLatLng.lat;
+        const lambdab = (Math.PI / 180) * cursorLatLng.lng;
+        const yb = Math.sin(lambdab - lambda1) * Math.cos(phib);
+        const xb =
+          Math.cos(phi1) * Math.sin(phib) -
+          Math.sin(phi1) * Math.cos(phib) * Math.cos(lambdab - lambda1);
+        const theta = Math.atan2(yb, xb);
+        const delta = c.radius / R;
+        const sinphi2 =
+          Math.sin(phi1) * Math.cos(delta) +
+          Math.cos(phi1) * Math.sin(delta) * Math.cos(theta);
+        const phi2 = Math.asin(sinphi2);
+        const y2 = Math.sin(theta) * Math.sin(delta) * Math.cos(phi1);
+        const x2 = Math.cos(delta) - Math.sin(phi1) * sinphi2;
+        const lambda2 = lambda1 + Math.atan2(y2, x2);
+        const edge = L.latLng(
+          (180 / Math.PI) * phi2,
+          (((180 / Math.PI) * lambda2 + 540) % 360) - 180
+        );
+        best = edge;
+        bestDist = diff;
       }
     });
-  });
-
-  // Cercles: aimantation au bord si proche (calcul géodésique exact)
-  this.circleManager.circles.forEach(c => {
-    const center = L.latLng(c.latitude, c.longitude);
-    const dCenter = map.distance(center, cursorLatLng);
-    const diff = Math.abs(dCenter - c.radius);
-    if (diff < TOL && diff < bestDist) {
-      const R = 6371000;
-      const phi1 = (Math.PI/180)*center.lat;
-      const lambda1 = (Math.PI/180)*center.lng;
-      const phib = (Math.PI/180)*cursorLatLng.lat;
-      const lambdab = (Math.PI/180)*cursorLatLng.lng;
-      const yb = Math.sin(lambdab - lambda1) * Math.cos(phib);
-      const xb = Math.cos(phi1) * Math.sin(phib) - Math.sin(phi1) * Math.cos(phib) * Math.cos(lambdab - lambda1);
-      const theta = Math.atan2(yb, xb);
-      const delta = c.radius / R;
-      const sinphi2 = Math.sin(phi1) * Math.cos(delta) + Math.cos(phi1) * Math.sin(delta) * Math.cos(theta);
-      const phi2 = Math.asin(sinphi2);
-      const y2 = Math.sin(theta) * Math.sin(delta) * Math.cos(phi1);
-      const x2 = Math.cos(delta) - Math.sin(phi1) * sinphi2;
-      const lambda2 = lambda1 + Math.atan2(y2, x2);
-      const edge = L.latLng((180/Math.PI)*phi2, (((180/Math.PI)*lambda2 + 540) % 360) - 180);
-      best = edge;
-      bestDist = diff;
-    }
-  });
-
-  return best;
-}
+  
+    return best;
+  }
+  
 
   // --- Helpers gÃ©odÃ©siques (dans UIManager) ---
-toRad(x){ return x * Math.PI / 180; }
-toDeg(x){ return x * 180 / Math.PI; }
+  toRad(x) {
+    return (x * Math.PI) / 180;
+  }
+  toDeg(x) {
+    return (x * 180) / Math.PI;
+  }
 
-// Bearing (de a -> b) en degrÃ©s
-bearing(a, b){
-  const d1 = this.toRad(a.lat), d3 = this.toRad(b.lat);
-  const d2 = this.toRad(a.lng), d4 = this.toRad(b.lng);
-  const y = Math.sin(d4-d2) * Math.cos(d3);
-  const x = Math.cos(d1)*Math.sin(d3) - Math.sin(d1)*Math.cos(d3)*Math.cos(d4-d2);
-  return (this.toDeg(Math.atan2(y, x)) + 360) % 360;
-}
+  // Bearing (de a -> b) en degrÃ©s
+  bearing(a, b) {
+    const d1 = this.toRad(a.lat),
+      d3 = this.toRad(b.lat);
+    const d2 = this.toRad(a.lng),
+      d4 = this.toRad(b.lng);
+    const y = Math.sin(d4 - d2) * Math.cos(d3);
+    const x =
+      Math.cos(d1) * Math.sin(d3) -
+      Math.sin(d1) * Math.cos(d3) * Math.cos(d4 - d2);
+    return (this.toDeg(Math.atan2(y, x)) + 360) % 360;
+  }
 
-// Destination Ã  partir de start, bearingÂ° et distance en mÃ¨tres (sphÃ¨re)
-destination(start, bearingDeg, distance){
-  const R = 6371000; // rayon terrestre moyen
-  const d5 = distance / R;
-  const d6 = this.toRad(bearingDeg);
-  const d1 = this.toRad(start.lat);
-  const d2 = this.toRad(start.lng);
+  // Destination Ã  partir de start, bearingÂ° et distance en mÃ¨tres (sphÃ¨re)
+  destination(start, bearingDeg, distance) {
+    const R = 6371000; // rayon terrestre moyen
+    const d5 = distance / R;
+    const d6 = this.toRad(bearingDeg);
+    const d1 = this.toRad(start.lat);
+    const d2 = this.toRad(start.lng);
 
-  const sind1 = Math.sin(d1), cosd1 = Math.cos(d1);
-  const sind5 = Math.sin(d5),   cosd5 = Math.cos(d5);
+    const sind1 = Math.sin(d1),
+      cosd1 = Math.cos(d1);
+    const sind5 = Math.sin(d5),
+      cosd5 = Math.cos(d5);
 
-  const sind3 = sind1*cosd5 + cosd1*sind5*Math.cos(d6);
-  const d3 = Math.asin(sind3);
-  const y = Math.sin(d6)*sind5*cosd1;
-  const x = cosd5 - sind1*sind3;
-  const d4 = d2 + Math.atan2(y, x);
+    const sind3 = sind1 * cosd5 + cosd1 * sind5 * Math.cos(d6);
+    const d3 = Math.asin(sind3);
+    const y = Math.sin(d6) * sind5 * cosd1;
+    const x = cosd5 - sind1 * sind3;
+    const d4 = d2 + Math.atan2(y, x);
 
-  return L.latLng(this.toDeg(d3), ((this.toDeg(d4)+540)%360)-180);
-}
+    return L.latLng(this.toDeg(d3), ((this.toDeg(d4) + 540) % 360) - 180);
+  }
 
-  
+  showColorOverlay() {
+    // Supprimer un ancien overlay si déjà présent
+    if (this._colorOverlay) this._colorOverlay.remove();
 
-  
+    // Créer l'overlay flottant
+    const overlay = document.createElement("div");
+    overlay.className = "color-overlay";
+    Object.assign(overlay.style, {
+      position: "fixed",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      background: "#fff",
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+      padding: "12px",
+      boxShadow: "0 2px 10px rgba(0,0,0,.2)",
+      zIndex: 99999,
+      textAlign: "center",
+      width: "250px",
+    });
+
+    overlay.innerHTML = `
+    <h6>Changer la couleur</h6>
+    <input type="color" id="colorPicker" style="width: 100%; height: 40px; margin-bottom: 8px;">
+    <input type="text" id="colorInput" placeholder="#3388ff ou rgb(50,50,50)" style="width: 100%; margin-bottom: 8px;">
+    <div style="display: flex; justify-content: space-between;">
+      <button id="applyColor" class="btn btn-primary btn-sm">Appliquer</button>
+      <button id="cancelColor" class="btn btn-secondary btn-sm">Annuler</button>
+    </div>
+  `;
+
+    document.body.appendChild(overlay);
+    this._colorOverlay = overlay;
+
+    const picker = overlay.querySelector("#colorPicker");
+    const input = overlay.querySelector("#colorInput");
+
+    // Synchronisation des champs
+    picker.addEventListener("input", () => {
+      input.value = picker.value;
+    });
+    input.addEventListener("input", () => {
+      picker.value = input.value.startsWith("#") ? input.value : picker.value;
+    });
+
+    // Bouton appliquer
+    overlay.querySelector("#applyColor").addEventListener("click", () => {
+      const color = input.value.trim() || picker.value;
+      this.applyColorToSelection(color);
+      overlay.remove();
+      this._colorOverlay = null;
+    });
+
+    // Bouton annuler
+    overlay.querySelector("#cancelColor").addEventListener("click", () => {
+      overlay.remove();
+      this._colorOverlay = null;
+    });
+  }
+
+  applyColorToSelection(color) {
+    const selected = this.selection.getAll();
+
+    selected.forEach((el) => {
+      if (el instanceof Point) {
+        el.color = color;
+      } else if (el instanceof Line) {
+        el.startPoint.color = color;
+        el.endPoint.color = color;
+      } else if (el instanceof Circle) {
+        el.color = color;
+      }
+    });
+
+    this.pointManager.saveToStorage();
+    this.lineManager.saveToStorage();
+    this.circleManager.saveToStorage();
+
+    this.redraw();
+  }
+
+  clearStretchLines() {
+    this.stretchLayers.forEach((layer) => this.map.removeLayer(layer));
+    this.stretchLayers = [];
+  }
+
+  showStretchedGeodesic(line) {
+    this.clearStretchLines();
+
+    const start = L.latLng(line.startPoint.latitude, line.startPoint.longitude);
+    const end = L.latLng(line.endPoint.latitude, line.endPoint.longitude);
+
+    // Fonction d’interpolation géodésique complète (360°)
+    const points = [];
+    const numPoints = 720; // résolution plus fine pour améliorer l'aimantation
+    const totalDist = this.map.distance(start, end);
+    const bearing1 = this.bearing(start, end);
+    const bearing2 = (bearing1 + 180) % 360;
+
+    // Prolongement dans les deux directions jusqu’à tour complet (~40 000 km)
+    const step = 40000_000 / numPoints;
+
+    // Aller dans la direction 1
+    for (let i = 0; i <= numPoints / 2; i++) {
+      points.push(this.destination(start, bearing1, step * i));
+    }
+
+    // Aller dans la direction opposée
+    const reverse = [];
+    for (let i = 0; i <= numPoints / 2; i++) {
+      reverse.push(this.destination(start, bearing2, step * i));
+    }
+    reverse.reverse();
+    const fullCircle = reverse.concat(points);
+
+    // Ajouter la ligne pointillée
+    const ghost = L.geodesic(fullCircle, {
+      color: line.startPoint.color || "#888",
+      weight: 2,
+      dashArray: "6, 8",
+      opacity: 0.6,
+      interactive: false,
+    }).addTo(this.map);
+
+    this.stretchLayers.push(ghost);
+  }
 }
 
 export default UIManager;

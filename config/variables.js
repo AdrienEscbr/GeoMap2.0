@@ -40,3 +40,5 @@ const tbDistanceBtn = document.getElementById('show-distances-btn');
 const tbNameBtn = document.getElementById('show-names-btn');
 const tbAddCircleBtn = document.getElementById('circle-btn');
 const tbAddPointBtn = document.getElementById('add-point-btn');
+const tbChangeColorBtn = document.getElementById('element-color');
+const tbStretchLineBtn = document.getElementById('stretch-btn');
