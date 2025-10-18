@@ -2,6 +2,12 @@
 import Line from "../class/Line.js";
 import Circle from "../class/Circle.js";
 
+/**
+ * TODO
+ * - implement structure rotation from one point (rotate every object conected together with the selected point)
+ * - BONUS : add button allowing to move one point on the map but keeping connected lines while moving
+ */
+
 class UIManager {
   constructor(
     map,
@@ -54,6 +60,7 @@ class UIManager {
     this.setUpPointsToConnect();
     this.setUpEraseTool();
     this.setUpDistanceToggle();
+    this.setUpEditPointModal();
 
     this.redraw();
 
@@ -302,16 +309,16 @@ class UIManager {
     tbEraseBtn.addEventListener("click", () => {
       this.isEraseMode = !this.isEraseMode; // toggle l’état
 
-      if (this.isEraseMode) {
-        // Changement visuel
-        tbEraseBtn.classList.add("active");
-        this.map.getContainer().style.cursor =
-          "url('./assets/rubber.png') 8 8, auto";
-      } else {
-        tbEraseBtn.classList.remove("active");
-        this.map.getContainer().style.cursor = "auto";
-      }
-
+      // if (this.isEraseMode) {
+      //   // Changement visuel
+      //   tbEraseBtn.classList.add("active");
+      //   this.map.getContainer().style.cursor =
+      //     "url('./assets/rubber.png') 8 8, auto";
+      // } else {
+      //   tbEraseBtn.classList.remove("active");
+      //   this.map.getContainer().style.cursor = "auto";
+      // }
+      this.updateModeState();
       // On redessine pour que les click handlers s’adaptent au mode actif
       this.redraw();
     });
@@ -345,37 +352,38 @@ class UIManager {
     tbAddLineBtn.addEventListener("click", () => {
       this.connectMode = !this.connectMode;
 
-      if (this.connectMode) {
-        tbAddLineBtn.classList.add("active");
-      } else {
-        tbAddLineBtn.classList.remove("active");
-      }
+      // if (this.connectMode) {
+      //   tbAddLineBtn.classList.add("active");
+      // } else {
+      //   tbAddLineBtn.classList.remove("active");
+      // }
+      this.updateModeState();
 
       // === Si on vient d'activer le mode ===
-      if (this.connectMode) {
-        const selectedPoints = this.selection
-          .getAll()
-          .filter((e) => e instanceof Point);
+      // if (this.connectMode) {
+      //   const selectedPoints = this.selection
+      //     .getAll()
+      //     .filter((e) => e instanceof Point);
 
-        if (selectedPoints.length > 1) {
-          for (let i = 0; i < selectedPoints.length - 1; i++) {
-            const p1 = selectedPoints[i];
-            const p2 = selectedPoints[i + 1];
+      //   if (selectedPoints.length > 1) {
+      //     for (let i = 0; i < selectedPoints.length - 1; i++) {
+      //       const p1 = selectedPoints[i];
+      //       const p2 = selectedPoints[i + 1];
 
-            const alreadyExists = this.lineManager.lines.some(
-              (l) =>
-                (l.startPoint === p1 && l.endPoint === p2) ||
-                (l.startPoint === p2 && l.endPoint === p1)
-            );
+      //       const alreadyExists = this.lineManager.lines.some(
+      //         (l) =>
+      //           (l.startPoint === p1 && l.endPoint === p2) ||
+      //           (l.startPoint === p2 && l.endPoint === p1)
+      //       );
 
-            if (!alreadyExists) {
-              this.lineManager.addLine(p1, p2, true);
-            }
-          }
+      //       if (!alreadyExists) {
+      //         this.lineManager.addLine(p1, p2, true);
+      //       }
+      //     }
 
-          this.redraw();
-        }
-      }
+      //     this.redraw();
+      //   }
+      // }
     });
 
     tbNameBtn.addEventListener("click", () => {
@@ -398,24 +406,24 @@ class UIManager {
     tbAddCircleBtn.addEventListener("click", () => {
       this.circleTool.active = !this.circleTool.active;
 
-      tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
-
-      if (this.circleTool.active) {
-        this.isEraseMode = false;
-        this.connectMode = false;
-        this.map.getContainer().style.cursor = "crosshair";
-      } else {
-        this.map.getContainer().style.cursor = "auto";
-        // annuler un cercle en cours (si l'utilisateur désactive au milieu)
-        if (this.circleTool.moveHandler)
-          this.map.off("mousemove", this.circleTool.moveHandler);
-        if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
-        if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
-        this.circleTool.center = null;
-        this.circleTool.tempCircle = null;
-        this.circleTool.moveHandler = null;
-        this.circleTool.labelEl = null;
-      }
+      // tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
+      this.updateModeState();
+      // if (this.circleTool.active) {
+      //   this.isEraseMode = false;
+      //   this.connectMode = false;
+      //   this.map.getContainer().style.cursor = "crosshair";
+      // } else {
+      //   this.map.getContainer().style.cursor = "auto";
+      //   // annuler un cercle en cours (si l'utilisateur désactive au milieu)
+      //   if (this.circleTool.moveHandler)
+      //     this.map.off("mousemove", this.circleTool.moveHandler);
+      //   if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
+      //   if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
+      //   this.circleTool.center = null;
+      //   this.circleTool.tempCircle = null;
+      //   this.circleTool.moveHandler = null;
+      //   this.circleTool.labelEl = null;
+      // }
     });
 
     tbChangeColorBtn.addEventListener("click", () => {
@@ -425,12 +433,12 @@ class UIManager {
 
     tbStretchLineBtn.addEventListener("click", () => {
       this.stretchMode = !this.stretchMode;
-      tbStretchLineBtn.classList.toggle("active", this.stretchMode);
-
-      if (!this.stretchMode) {
-        // On désactive → nettoyage
-        this.clearStretchLines();
-      }
+      // tbStretchLineBtn.classList.toggle("active", this.stretchMode);
+      this.updateModeState();
+      // if (!this.stretchMode) {
+      //   // On désactive → nettoyage
+      //   this.clearStretchLines();
+      // }
     });
   }
 
@@ -571,7 +579,12 @@ class UIManager {
 
       const btnDel = document.createElement("button");
       btnDel.className = "btn btn-sm btn-danger";
-      btnDel.textContent = "Supprimer";
+      const img = document.createElement("img");
+      img.src = "../assets/bin.png";
+      img.alt = "Delete";
+      img.style.width = "16px"; // Adjust size as needed
+      img.style.height = "16px";
+      btnDel.appendChild(img);
       btnDel.addEventListener("click", () => {
         const linkedLines = this.lineManager.getLinesWithPoint(p);
         linkedLines.forEach((line) => {
@@ -583,6 +596,14 @@ class UIManager {
         this.setUpPointsList();
         this.setUpPointsToConnect();
       });
+      
+      const btnEdit = document.createElement("button");
+      btnEdit.className = "btn btn-sm btn-warning me-2";
+      btnEdit.textContent = "Modifier";
+      btnEdit.addEventListener("click", () => {
+        this.openEditPointModal(p);
+      });
+      li.appendChild(btnEdit);
       li.appendChild(btnDel);
 
       sbPointsList.appendChild(li);
@@ -954,38 +975,42 @@ class UIManager {
   setUpAddPointMode() {
     tbAddPointBtn.addEventListener("click", () => {
       this.addPointMode = !this.addPointMode;
-      tbAddPointBtn.classList.toggle("active", this.addPointMode);
-      this.map.getContainer().style.cursor = this.addPointMode
-        ? "crosshair"
-        : "auto";
+      // tbAddPointBtn.classList.toggle("active", this.addPointMode);
+      // this.map.getContainer().style.cursor = this.addPointMode
+      //   ? "crosshair"
+      //   : "auto";
+
+      this.updateModeState();
 
       if (this.addPointMode) {
-        // DÃ©sactiver les autres modes pour Ã©viter conflits
-        if (this.isEraseMode) {
-          this.isEraseMode = false;
-          tbEraseBtn.classList.remove("active");
-        }
-        if (this.connectMode) {
-          this.connectMode = false;
-          tbAddLineBtn.classList.remove("active");
-        }
-        if (this.circleTool.active) {
-          // Nettoyer le mode cercle
-          if (this.circleTool.moveHandler)
-            this.map.off("mousemove", this.circleTool.moveHandler);
-          if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
-          if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
-          this.circleTool.center = null;
-          this.circleTool.tempCircle = null;
-          this.circleTool.moveHandler = null;
-          this.circleTool.labelEl = null;
-          this.circleTool.active = false;
-          tbAddCircleBtn.classList.remove("active");
-        }
+        // Désactiver les autres modes pour Ã©viter conflits
+        // if (this.isEraseMode) {
+        //   this.isEraseMode = false;
+        //   tbEraseBtn.classList.remove("active");
+        // }
+        // if (this.connectMode) {
+        //   this.connectMode = false;
+        //   tbAddLineBtn.classList.remove("active");
+        // }
+        
+        // if (this.circleTool.active) {
+        //   // Nettoyer le mode cercle
+        //   if (this.circleTool.moveHandler)
+        //     this.map.off("mousemove", this.circleTool.moveHandler);
+        //   if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
+        //   if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
+        //   this.circleTool.center = null;
+        //   this.circleTool.tempCircle = null;
+        //   this.circleTool.moveHandler = null;
+        //   this.circleTool.labelEl = null;
+        //   this.circleTool.active = false;
+        //   tbAddCircleBtn.classList.remove("active");
+        // }
         this.startAddPointMode();
-      } else {
-        this.stopAddPointMode();
-      }
+      } 
+      // else {
+      //   this.stopAddPointMode();
+      // }
     });
   }
 
@@ -1268,6 +1293,122 @@ class UIManager {
 
     this.stretchLayers.push(ghost);
   }
+
+  updateModeState() {
+    // --- GESTION DES CONFLITS ---
+    if (this.isEraseMode) {
+      // Quand la gomme est active → on désactive tout le reste
+      this.addPointMode = false;
+      this.connectMode = false;
+      this.circleTool.active = false;
+      this.stretchMode = false;
+    } else {
+      // Si un des modes exclusifs est actif → désactive les autres
+      if (this.addPointMode) {
+        this.connectMode = false;
+        this.circleTool.active = false;
+      } else if (this.connectMode) {
+        this.addPointMode = false;
+        this.circleTool.active = false;
+      } else if (this.circleTool.active) {
+        this.addPointMode = false;
+        this.connectMode = false;
+      }
+    }
+  
+    // --- MISE À JOUR VISUELLE DES BOUTONS ---
+    tbAddPointBtn.classList.toggle("active", this.addPointMode);
+    tbAddLineBtn.classList.toggle("active", this.connectMode);
+    tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
+    tbEraseBtn.classList.toggle("active", this.isEraseMode);
+    tbStretchLineBtn.classList.toggle("active", this.stretchMode);
+
+    tbAddLineBtn.disabled = this.addPointMode || this.circleTool.active || this.isEraseMode;
+    tbAddPointBtn.disabled = this.connectMode || this.circleTool.active || this.isEraseMode;
+    tbAddCircleBtn.disabled = this.connectMode || this.addPointMode || this.isEraseMode;
+    tbStretchLineBtn.disabled = this.isEraseMode;
+
+  
+    // --- CURSEUR ---
+    const mapContainer = this.map.getContainer();
+    if (this.isEraseMode) {
+      mapContainer.style.cursor = "url('./assets/rubber.png') 8 8, auto";
+    } else if (this.addPointMode || this.circleTool.active || this.connectMode) {
+      mapContainer.style.cursor = "crosshair";
+    } else {
+      mapContainer.style.cursor = "auto";
+    }
+  
+    // --- NETTOYAGE DES MODES DÉSACTIVÉS ---
+    if (!this.addPointMode) this.stopAddPointMode();
+    if (!this.circleTool.active) this.cleanupActiveCircle();
+    if (!this.stretchMode) this.clearStretchLines();
+  }
+
+  openEditPointModal(point) {
+    // Sauvegarder le point en cours d'édition
+    this.pointBeingEdited = point;
+  
+    // Pré-remplir les champs du modal
+    document.getElementById("edit-desc").value = point.description;
+    document.getElementById("edit-coords").value = `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`;
+    document.getElementById("edit-color").value = point.color;
+    document.getElementById("edit-feedback").innerText = "";
+  
+    // Ouvrir le modal Bootstrap
+    const modal = new bootstrap.Modal(document.getElementById("editPointModal"));
+    modal.show();
+  }
+  
+  setUpEditPointModal() {
+    const saveBtn = document.getElementById("save-edit-btn");
+    const feedback = document.getElementById("edit-feedback");
+  
+    saveBtn.addEventListener("click", () => {
+      const point = this.pointBeingEdited;
+      if (!point) return;
+  
+      const desc = document.getElementById("edit-desc").value.trim();
+      const coordStr = document.getElementById("edit-coords").value.trim();
+      const color = document.getElementById("edit-color").value;
+  
+      // Validation du format des coordonnées
+      const parts = coordStr.split(",");
+      if (parts.length !== 2) {
+        feedback.innerText = "Format invalide : latitude, longitude attendus.";
+        return;
+      }
+  
+      const lat = parseFloat(parts[0].trim());
+      const lng = parseFloat(parts[1].trim());
+      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        feedback.innerText = "Coordonnées invalides.";
+        return;
+      }
+  
+      // Mise à jour du point
+      point.description = desc;
+      point.latitude = lat;
+      point.longitude = lng;
+      point.color = color;
+  
+      // Sauvegarde et redraw
+      this.pointManager.saveToStorage();
+      this.redraw();
+      this.setUpPointsList();
+      this.setUpPointsToConnect();
+  
+      // Fermer le modal
+      const modalEl = document.getElementById("editPointModal");
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      modal.hide();
+  
+      feedback.innerText = "";
+      this.pointBeingEdited = null;
+    });
+  }
+  
+  
 }
 
 export default UIManager;

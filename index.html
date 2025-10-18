@@ -72,22 +72,6 @@
                             Importer/Exporter
                         </a>
                     </li>
-
-                    <!-- <li class="nav-item d-flex align-items-center justify-content-start ms-3">
-                        <div class="form-check form-switch m-0">
-                            <input class="form-check-input" type="checkbox" id="toggle-measure" checked />
-                            <label class="form-check-label" for="toggle-measure">Afficher distances</label>
-                        </div>
-                    </li>
-
-                    <li class="nav-item d-flex align-items-center justify-content-start ms-3">
-                        <button id="add-point-button"
-                            class="btn btn-light p-1 d-flex align-items-center justify-content-center"
-                            style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                            <img id="toggle-image" src="./assets/aim.png" alt="Toggle"
-                                style="max-width: 100%; max-height: 100%;" />
-                        </button>
-                    </li> -->
                 </ul>
             </div>
         </div>
@@ -301,6 +285,44 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Modifier un point -->
+    <div class="modal fade" id="editPointModal" tabindex="-1" aria-labelledby="editPointModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="editPointModalLabel">Modifier le point</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+    
+            <div class="modal-body">
+            <form id="edit-point-form">
+                <div class="mb-3">
+                <label for="edit-desc" class="form-label">Description :</label>
+                <input type="text" class="form-control" id="edit-desc" required>
+                </div>
+    
+                <div class="mb-3">
+                <label for="edit-coords" class="form-label">Coordonnées (latitude, longitude) :</label>
+                <input type="text" class="form-control" id="edit-coords" placeholder="Ex : 48.8566, 2.3522" required>
+                </div>
+    
+                <div class="mb-3">
+                <label for="edit-color" class="form-label">Couleur du repère :</label>
+                <input type="color" class="form-control form-control-color" id="edit-color" value="#3388ff">
+                </div>
+            </form>
+            <div id="edit-feedback" class="text-danger small mt-2"></div>
+            </div>
+    
+            <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="button" class="btn btn-primary" id="save-edit-btn">Enregistrer</button>
+            </div>
+        </div>
+        </div>
+    </div>
+  
 
 
     <!-- Footer -->
