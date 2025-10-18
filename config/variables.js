@@ -42,3 +42,4 @@ const tbAddCircleBtn = document.getElementById('circle-btn');
 const tbAddPointBtn = document.getElementById('add-point-btn');
 const tbChangeColorBtn = document.getElementById('element-color');
 const tbStretchLineBtn = document.getElementById('stretch-btn');
+const tbStructureAngleBtn = document.getElementById('structure-angle');

@@ -4,7 +4,7 @@ import Circle from "../class/Circle.js";
 
 /**
  * TODO
- * - implement structure rotation from one point (rotate every object conected together with the selected point)
+ * - fix modes activation while using some others
  * - BONUS : add button allowing to move one point on the map but keeping connected lines while moving
  */
 
@@ -43,6 +43,16 @@ class UIManager {
       moveHandler: null, // listener mousemove
       labelEl: null, // div du label "NNN m"
     };
+
+    this.structureAngleMode = {
+      active: false,
+      pivot: null,
+      elements: [], // tous les points/lignes/cercle du groupe
+      originalPositions: new Map(), // sauvegarde des coords originales
+      uiBox: null,  // div contenant le slider
+      currentAngle: 0
+    };
+
 
     this.addPointMode = false;
     this.coordLabelEl = null;
@@ -440,6 +450,29 @@ class UIManager {
       //   this.clearStretchLines();
       // }
     });
+
+    tbStructureAngleBtn.addEventListener("click", () => {
+      this.structureAngleMode.active = !this.structureAngleMode.active;
+    
+      if (this.structureAngleMode.active) {
+        // désactiver outils incompatibles
+        tbAddPointBtn.disabled = true;
+        tbAddLineBtn.disabled = true;
+        tbAddCircleBtn.disabled = true;
+        tbStretchLineBtn.disabled = true;
+        tbChangeColorBtn.disabled = true;
+        tbDeleteBtn.disabled = true;
+    
+        tbStructureAngleBtn.classList.add("active");
+        this.isEraseMode = false; // gomme désactivée si active
+        tbEraseBtn.classList.remove("active");
+    
+        this.map.getContainer().style.cursor = "default";
+      } else {
+        this.exitStructureAngleMode();
+      }
+    });
+    
   }
 
   // === Import/Export modal ===
@@ -608,6 +641,11 @@ class UIManager {
 
       sbPointsList.appendChild(li);
     });
+
+    if (this.structureAngleMode.active) {
+      this.exitStructureAngleMode();
+    }
+    
   }
 
   // === Connexion de points ===
@@ -809,6 +847,12 @@ class UIManager {
       return;
     }
 
+    if (this.structureAngleMode.active) {
+      this.startStructureRotation(point);
+      return;
+    }
+    
+
     // 3) Mode normal : sélection / connect
     this.selection.toggle(point);
     this.redraw();
@@ -883,8 +927,16 @@ class UIManager {
       this.mouseLabel.remove();
       this.mouseLabel = null;
     }
-    map.off("mousemove", this._onMouseMoveAddPoint);
-    map.off("click", this._onClickAddPoint);
+    // ✅ Supprime proprement les écouteurs
+    if (this._onMouseMoveAddPoint) {
+      map.off("mousemove", this._onMouseMoveAddPoint);
+      this._onMouseMoveAddPoint = null;
+    }
+
+    if (this._onClickAddPoint) {
+      map.off("click", this._onClickAddPoint);
+      this._onClickAddPoint = null;
+    }
   }
 
   handleMouseMoveAddPoint(e) {
@@ -1406,6 +1458,181 @@ class UIManager {
       feedback.innerText = "";
       this.pointBeingEdited = null;
     });
+  }
+
+  getConnectedElements(startPoint) {
+    const connectedPoints = new Set([startPoint]);
+    const connectedLines = new Set();
+    const connectedCircles = new Set();
+  
+    let changed = true;
+    while (changed) {
+      changed = false;
+      // trouver les lignes connectées
+      this.lineManager.lines.forEach(l => {
+        if (connectedPoints.has(l.startPoint) || connectedPoints.has(l.endPoint)) {
+          if (!connectedLines.has(l)) {
+            connectedLines.add(l);
+            if (!connectedPoints.has(l.startPoint)) {
+              connectedPoints.add(l.startPoint); changed = true;
+            }
+            if (!connectedPoints.has(l.endPoint)) {
+              connectedPoints.add(l.endPoint); changed = true;
+            }
+          }
+        }
+      });
+      // trouver les cercles dont le centre est dans les points connectés
+      this.circleManager.circles.forEach(c => {
+        const centerPoint = this.pointManager.points.find(p =>
+          Math.abs(p.latitude - c.latitude) < 1e-9 &&
+          Math.abs(p.longitude - c.longitude) < 1e-9
+        );
+        if (centerPoint && connectedPoints.has(centerPoint)) {
+          connectedCircles.add(c);
+        }
+      });
+    }
+  
+    return {
+      points: Array.from(connectedPoints),
+      lines: Array.from(connectedLines),
+      circles: Array.from(connectedCircles)
+    };
+  }
+
+  startStructureRotation(pivotPoint) {
+    // si une rotation est déjà en cours, on ne fait rien
+    if (this.structureAngleMode.pivot) return;
+  
+    const { points, lines, circles } = this.getConnectedElements(pivotPoint);
+    const mode = this.structureAngleMode;
+  
+    mode.pivot = pivotPoint;
+    mode.elements = { points, lines, circles };
+    mode.originalPositions.clear();
+    mode.currentAngle = 0;
+  
+    // sauvegarder les positions d'origine
+    points.forEach(p => mode.originalPositions.set(p, { lat: p.latitude, lng: p.longitude }));
+  
+    // afficher l'UI du slider
+    this.showRotationUI();
+  }
+  
+  showRotationUI() {
+    const mode = this.structureAngleMode;
+  
+    const box = document.createElement("div");
+    box.className = "rotation-ui";
+    Object.assign(box.style, {
+      position: "fixed",
+      top: "20px",
+      right: "20px",
+      background: "white",
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+      padding: "10px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+      zIndex: "9999",
+      width: "220px",
+    });
+  
+    box.innerHTML = `
+      <label for="rotation-slider" style="font-weight:bold;">Rotation (°)</label>
+      <input type="range" id="rotation-slider" min="-180" max="180" step="1" value="0" style="width:100%;">
+      <div class="text-center my-2">
+        <span id="rotation-value">0°</span>
+      </div>
+      <div class="d-flex justify-content-between mt-2">
+        <button class="btn btn-sm btn-success" id="rotation-validate">Valider</button>
+        <button class="btn btn-sm btn-danger" id="rotation-cancel">Annuler</button>
+      </div>
+    `;
+    document.body.appendChild(box);
+    mode.uiBox = box;
+  
+    // handlers
+    const slider = box.querySelector("#rotation-slider");
+    const label = box.querySelector("#rotation-value");
+  
+    slider.addEventListener("input", (e) => {
+      const angle = parseFloat(e.target.value);
+      label.textContent = `${angle}°`;
+      this.applyRotation(angle);
+    });
+  
+    box.querySelector("#rotation-validate").addEventListener("click", () => {
+      this.validateRotation();
+    });
+  
+    box.querySelector("#rotation-cancel").addEventListener("click", () => {
+      this.cancelRotation();
+    });
+  }
+  
+  applyRotation(angleDeg) {
+    const mode = this.structureAngleMode;
+    if (!mode.pivot) return;
+  
+    mode.currentAngle = angleDeg;
+    const pivot = L.latLng(mode.pivot.latitude, mode.pivot.longitude);
+    const R = 6371000;
+  
+    mode.elements.points.forEach(p => {
+      if (p === mode.pivot) return;
+  
+      const original = mode.originalPositions.get(p);
+      const d = this.map.distance(pivot, [original.lat, original.lng]);
+      const bearing = this.bearing(pivot, L.latLng(original.lat, original.lng));
+      const newBearing = bearing + angleDeg;
+      const newPos = this.destination(pivot, newBearing, d);
+  
+      p.latitude = newPos.lat;
+      p.longitude = newPos.lng;
+    });
+  
+    this.redraw();
+  }
+  
+  validateRotation() {
+    const mode = this.structureAngleMode;
+    if (!mode.pivot) return;
+    this.pointManager.saveToStorage();
+    this.exitStructureAngleMode();
+  }
+  
+  cancelRotation() {
+    const mode = this.structureAngleMode;
+    if (!mode.pivot) return;
+    // remettre les positions d'origine
+    for (const [p, pos] of mode.originalPositions.entries()) {
+      p.latitude = pos.lat;
+      p.longitude = pos.lng;
+    }
+    this.redraw();
+    this.exitStructureAngleMode();
+  }
+  
+  exitStructureAngleMode() {
+    const mode = this.structureAngleMode;
+    if (mode.uiBox) mode.uiBox.remove();
+    mode.uiBox = null;
+    mode.pivot = null;
+    mode.elements = [];
+    mode.originalPositions.clear();
+    mode.currentAngle = 0;
+    mode.active = false;
+  
+    // réactiver boutons
+    tbAddPointBtn.disabled = false;
+    tbAddLineBtn.disabled = false;
+    tbAddCircleBtn.disabled = false;
+    tbStretchLineBtn.disabled = false;
+    tbChangeColorBtn.disabled = false;
+    tbDeleteBtn.disabled = false;
+  
+    tbStructureAngleBtn.classList.remove("active");
   }
   
   
