@@ -2,12 +2,6 @@
 import Line from "../class/Line.js";
 import Circle from "../class/Circle.js";
 
-/**
- * TODO
- * - fix modes activation while using some others
- * - BONUS : add button allowing to move one point on the map but keeping connected lines while moving
- */
-
 class UIManager {
   constructor(
     map,
@@ -318,18 +312,7 @@ class UIManager {
   setUpEraseTool() {
     tbEraseBtn.addEventListener("click", () => {
       this.isEraseMode = !this.isEraseMode; // toggle l’état
-
-      // if (this.isEraseMode) {
-      //   // Changement visuel
-      //   tbEraseBtn.classList.add("active");
-      //   this.map.getContainer().style.cursor =
-      //     "url('./assets/rubber.png') 8 8, auto";
-      // } else {
-      //   tbEraseBtn.classList.remove("active");
-      //   this.map.getContainer().style.cursor = "auto";
-      // }
       this.updateModeState();
-      // On redessine pour que les click handlers s’adaptent au mode actif
       this.redraw();
     });
   }
@@ -361,39 +344,7 @@ class UIManager {
 
     tbAddLineBtn.addEventListener("click", () => {
       this.connectMode = !this.connectMode;
-
-      // if (this.connectMode) {
-      //   tbAddLineBtn.classList.add("active");
-      // } else {
-      //   tbAddLineBtn.classList.remove("active");
-      // }
       this.updateModeState();
-
-      // === Si on vient d'activer le mode ===
-      // if (this.connectMode) {
-      //   const selectedPoints = this.selection
-      //     .getAll()
-      //     .filter((e) => e instanceof Point);
-
-      //   if (selectedPoints.length > 1) {
-      //     for (let i = 0; i < selectedPoints.length - 1; i++) {
-      //       const p1 = selectedPoints[i];
-      //       const p2 = selectedPoints[i + 1];
-
-      //       const alreadyExists = this.lineManager.lines.some(
-      //         (l) =>
-      //           (l.startPoint === p1 && l.endPoint === p2) ||
-      //           (l.startPoint === p2 && l.endPoint === p1)
-      //       );
-
-      //       if (!alreadyExists) {
-      //         this.lineManager.addLine(p1, p2, true);
-      //       }
-      //     }
-
-      //     this.redraw();
-      //   }
-      // }
     });
 
     tbNameBtn.addEventListener("click", () => {
@@ -415,25 +366,7 @@ class UIManager {
     // === Bouton pour créer des cercles ===
     tbAddCircleBtn.addEventListener("click", () => {
       this.circleTool.active = !this.circleTool.active;
-
-      // tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
       this.updateModeState();
-      // if (this.circleTool.active) {
-      //   this.isEraseMode = false;
-      //   this.connectMode = false;
-      //   this.map.getContainer().style.cursor = "crosshair";
-      // } else {
-      //   this.map.getContainer().style.cursor = "auto";
-      //   // annuler un cercle en cours (si l'utilisateur désactive au milieu)
-      //   if (this.circleTool.moveHandler)
-      //     this.map.off("mousemove", this.circleTool.moveHandler);
-      //   if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
-      //   if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
-      //   this.circleTool.center = null;
-      //   this.circleTool.tempCircle = null;
-      //   this.circleTool.moveHandler = null;
-      //   this.circleTool.labelEl = null;
-      // }
     });
 
     tbChangeColorBtn.addEventListener("click", () => {
@@ -443,34 +376,12 @@ class UIManager {
 
     tbStretchLineBtn.addEventListener("click", () => {
       this.stretchMode = !this.stretchMode;
-      // tbStretchLineBtn.classList.toggle("active", this.stretchMode);
       this.updateModeState();
-      // if (!this.stretchMode) {
-      //   // On désactive → nettoyage
-      //   this.clearStretchLines();
-      // }
     });
 
     tbStructureAngleBtn.addEventListener("click", () => {
       this.structureAngleMode.active = !this.structureAngleMode.active;
-    
-      if (this.structureAngleMode.active) {
-        // désactiver outils incompatibles
-        tbAddPointBtn.disabled = true;
-        tbAddLineBtn.disabled = true;
-        tbAddCircleBtn.disabled = true;
-        tbStretchLineBtn.disabled = true;
-        tbChangeColorBtn.disabled = true;
-        tbDeleteBtn.disabled = true;
-    
-        tbStructureAngleBtn.classList.add("active");
-        this.isEraseMode = false; // gomme désactivée si active
-        tbEraseBtn.classList.remove("active");
-    
-        this.map.getContainer().style.cursor = "default";
-      } else {
-        this.exitStructureAngleMode();
-      }
+      this.updateModeState();
     });
     
   }
@@ -1027,46 +938,15 @@ class UIManager {
   setUpAddPointMode() {
     tbAddPointBtn.addEventListener("click", () => {
       this.addPointMode = !this.addPointMode;
-      // tbAddPointBtn.classList.toggle("active", this.addPointMode);
-      // this.map.getContainer().style.cursor = this.addPointMode
-      //   ? "crosshair"
-      //   : "auto";
-
       this.updateModeState();
 
       if (this.addPointMode) {
-        // Désactiver les autres modes pour Ã©viter conflits
-        // if (this.isEraseMode) {
-        //   this.isEraseMode = false;
-        //   tbEraseBtn.classList.remove("active");
-        // }
-        // if (this.connectMode) {
-        //   this.connectMode = false;
-        //   tbAddLineBtn.classList.remove("active");
-        // }
-        
-        // if (this.circleTool.active) {
-        //   // Nettoyer le mode cercle
-        //   if (this.circleTool.moveHandler)
-        //     this.map.off("mousemove", this.circleTool.moveHandler);
-        //   if (this.circleTool.labelEl) this.circleTool.labelEl.remove();
-        //   if (this.circleTool.tempCircle) this.circleTool.tempCircle.remove();
-        //   this.circleTool.center = null;
-        //   this.circleTool.tempCircle = null;
-        //   this.circleTool.moveHandler = null;
-        //   this.circleTool.labelEl = null;
-        //   this.circleTool.active = false;
-        //   tbAddCircleBtn.classList.remove("active");
-        // }
         this.startAddPointMode();
       } 
-      // else {
-      //   this.stopAddPointMode();
-      // }
     });
   }
 
-  // Nouvelle version amÃ©liorÃ©e du snapping (segments + cercle)
+  // Nouvelle version améliorée du snapping (segments + cercle)
   getSnappedLatLngImproved(cursorLatLng) {
     const map = this.map;
     const TOL = this.snapTolerance; // mètres
@@ -1336,7 +1216,7 @@ class UIManager {
 
     // Ajouter la ligne pointillée
     const ghost = L.geodesic(fullCircle, {
-      color: line.startPoint.color || "#888",
+      color: "#888",
       weight: 2,
       dashArray: "6, 8",
       opacity: 0.6,
@@ -1354,17 +1234,30 @@ class UIManager {
       this.connectMode = false;
       this.circleTool.active = false;
       this.stretchMode = false;
+      this.structureAngleMode.active = false
     } else {
       // Si un des modes exclusifs est actif → désactive les autres
       if (this.addPointMode) {
         this.connectMode = false;
         this.circleTool.active = false;
+        this.structureAngleMode.active = false;
       } else if (this.connectMode) {
         this.addPointMode = false;
         this.circleTool.active = false;
+        this.structureAngleMode.active = false;
       } else if (this.circleTool.active) {
         this.addPointMode = false;
         this.connectMode = false;
+        this.structureAngleMode.active = false;
+      }
+      else if(this.structureAngleMode.active){
+        this.addPointMode = false;
+        this.connectMode = false;
+        this.stretchMode = false;
+        this.circleTool.active = false;
+      }
+      else if (this.stretchMode) {
+        this.structureAngleMode.active = false;
       }
     }
   
@@ -1374,13 +1267,18 @@ class UIManager {
     tbAddCircleBtn.classList.toggle("active", this.circleTool.active);
     tbEraseBtn.classList.toggle("active", this.isEraseMode);
     tbStretchLineBtn.classList.toggle("active", this.stretchMode);
+    tbStructureAngleBtn.classList.toggle("active", this.structureAngleMode.active);
 
-    tbAddLineBtn.disabled = this.addPointMode || this.circleTool.active || this.isEraseMode;
-    tbAddPointBtn.disabled = this.connectMode || this.circleTool.active || this.isEraseMode;
-    tbAddCircleBtn.disabled = this.connectMode || this.addPointMode || this.isEraseMode;
-    tbStretchLineBtn.disabled = this.isEraseMode;
+    const structureActive = this.structureAngleMode.active;
 
-  
+    tbAddLineBtn.disabled = this.addPointMode || this.circleTool.active || this.isEraseMode || structureActive;
+    tbAddPointBtn.disabled = this.connectMode || this.circleTool.active || this.isEraseMode || structureActive;
+    tbAddCircleBtn.disabled = this.connectMode || this.addPointMode || this.isEraseMode || structureActive;
+    tbStretchLineBtn.disabled = this.isEraseMode || structureActive;
+    tbStructureAngleBtn.disabled = this.addPointMode || this.connectMode || this.stretchMode || this.circleTool.active || this.isEraseMode
+    tbChangeColorBtn.disabled = structureActive;
+    tbDeleteBtn.disabled = structureActive;
+
     // --- CURSEUR ---
     const mapContainer = this.map.getContainer();
     if (this.isEraseMode) {
@@ -1395,6 +1293,7 @@ class UIManager {
     if (!this.addPointMode) this.stopAddPointMode();
     if (!this.circleTool.active) this.cleanupActiveCircle();
     if (!this.stretchMode) this.clearStretchLines();
+    if(!this.structureAngleMode.active) this.exitStructureAngleMode();
   }
 
   openEditPointModal(point) {
@@ -1525,25 +1424,12 @@ class UIManager {
   
     const box = document.createElement("div");
     box.className = "rotation-ui";
-    Object.assign(box.style, {
-      position: "fixed",
-      top: "20px",
-      right: "20px",
-      background: "white",
-      border: "1px solid #ccc",
-      borderRadius: "8px",
-      padding: "10px",
-      boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
-      zIndex: "9999",
-      width: "220px",
-    });
-  
+      
     box.innerHTML = `
-      <label for="rotation-slider" style="font-weight:bold;">Rotation (°)</label>
+      <label for="rotation-slider" style="font-weight:bold;">Rotation :</label>
+      <span class="mx-2" id="rotation-value">0°</span>
       <input type="range" id="rotation-slider" min="-180" max="180" step="1" value="0" style="width:100%;">
-      <div class="text-center my-2">
-        <span id="rotation-value">0°</span>
-      </div>
+      
       <div class="d-flex justify-content-between mt-2">
         <button class="btn btn-sm btn-success" id="rotation-validate">Valider</button>
         <button class="btn btn-sm btn-danger" id="rotation-cancel">Annuler</button>
