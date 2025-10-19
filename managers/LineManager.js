@@ -100,7 +100,7 @@ class LineManager {
 
   loadFromStorage() {
     const lines = this.storage.load("lines");
-    console.log("lines loaded : ", lines);
+    // console.log("lines loaded : ", lines);
 
     lines.forEach(l => {
       const start = this.pointManager.getPointById(l.id1);

@@ -34,7 +34,7 @@ class CircleManager {
 
   loadFromStorage() {
     const circles = this.storage.load("circles");
-    console.log("circles loaded : ", circles);
+    // console.log("circles loaded : ", circles);
 
     circles.forEach(c => {
       this.addCircle(c.radius, c.lat, c.lng, c.color);

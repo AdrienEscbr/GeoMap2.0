@@ -499,7 +499,7 @@ class UIManager {
     });
 
     sbPointsList.innerHTML = "";
-    console.log(this.pointManager.points);
+    // console.log(this.pointManager.points);
     this.pointManager.points.forEach((p) => {
       const li = document.createElement("li");
       li.className = "list-group-item d-flex align-items-center";
@@ -587,6 +587,26 @@ class UIManager {
 
     sbFirstPointToConnect.addEventListener("change", checkSelection);
     sbSecondPointToConnect.addEventListener("change", checkSelection);
+    sbConnectBtn.addEventListener("click", () => {   
+      
+      const id1 = parseInt(sbFirstPointToConnect.value);
+      const id2 = parseInt(sbSecondPointToConnect.value);
+
+      const p1 = this.pointManager.getPointById(id1);
+      const p2 = this.pointManager.getPointById(id2);
+
+      const alreadyExists = this.lineManager.lines.some(
+        (l) =>
+          (l.startPoint === p1 && l.endPoint === p2) ||
+          (l.startPoint === p2 && l.endPoint === p1)
+      );
+
+      if (!alreadyExists) {
+        this.lineManager.addLine(p1, p2, true);
+        this.redraw();
+      }
+        
+    })
   }
 
   startCircleAtPoint(centerPoint) {
