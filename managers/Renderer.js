@@ -1,201 +1,174 @@
+import { COLORS } from '../config/constants.js';
+import { GeoUtils } from '../utils/GeoUtils.js';
+
 class Renderer {
   constructor(map) {
-    this.map = map;
-    this.layers = new Map(); // Map<entity, LeafletLayer>
-    this.distanceLabels = new Map(); // Map<line, L.Marker> pour les distances
-    this.nameLabels = new Map(); // Map<Point, L.Marker>
+    this.map          = map;
+    this.layers       = new Map();
+    this.distLabels   = new Map();
+    this.nameLabels   = new Map();
+
+    // Single off-screen element reused for all text measurements
+    this._measurer = document.createElement('div');
+    Object.assign(this._measurer.style, {
+      position:   'absolute',
+      visibility: 'hidden',
+      whiteSpace: 'nowrap',
+      left:       '-9999px',
+    });
+    document.body.appendChild(this._measurer);
   }
 
-  // Nettoyer la carte
   clear() {
-    this.layers.forEach((layer) => this.map.removeLayer(layer));
+    this.layers.forEach(l => this.map.removeLayer(l));
     this.layers.clear();
-
-    this.distanceLabels.forEach((label) => this.map.removeLayer(label));
-    this.distanceLabels.clear();
+    this.clearDistLabels();
   }
 
-  // Dessiner un point
-  drawPoint(point, isSelected = false, onClick = null) {
-    const color = isSelected ? "#FF0000" : "#0000FF";
+  // ── Points ──────────────────────────────────────────────────────────────────
 
+  drawPoint(point, isSelected = false, onClick = null) {
+    const border = isSelected ? COLORS.selected : COLORS.unselected;
     const marker = L.circleMarker([point.latitude, point.longitude], {
-      radius: point.radius || 8,
-      fillColor: point.color,
-      color,
-      weight: 1,
+      radius:      point.radius,
+      fillColor:   point.color,
+      color:       border,
+      weight:      isSelected ? 3 : 1.5,
       fillOpacity: 0.9,
       bubblingMouseEvents: false,
     }).addTo(this.map);
 
-    marker.on("click", (e) => {
-      L.DomEvent.stopPropagation(e);
-      if (window.appUI && typeof window.appUI.handlePointClick === "function") {
-        window.appUI.handlePointClick(point, e);
-      } else {
-        onClick(point); // fallback (sélection classique)
-      }
-    });
-    
+    if (onClick) {
+      marker.on('click', e => {
+        L.DomEvent.stopPropagation(e);
+        onClick(point, e);
+      });
+    }
 
     this.layers.set(point, marker);
   }
 
-  drawLine(line, isSelected = false, onClick = null, showDistance = false) {
-    const color = isSelected ? "#FF0000" : "#0000FF";
+  // ── Lines ───────────────────────────────────────────────────────────────────
 
-    const poly = L.geodesic(
-      [
-        [line.startPoint.latitude, line.startPoint.longitude],
-        [line.endPoint.latitude, line.endPoint.longitude],
-      ],
-      { color, weight: 3, steps: 256 }
+  drawLine(line, isSelected = false, onClick = null, showDistance = false) {
+    const color = isSelected ? COLORS.selected : COLORS.unselected;
+    const poly  = L.geodesic(
+      [[line.startPoint.latitude, line.startPoint.longitude],
+       [line.endPoint.latitude,   line.endPoint.longitude]],
+      { color, weight: isSelected ? 4 : 2.5, steps: 256 }
     ).addTo(this.map);
 
-    poly.on('click', (e) => {
-      L.DomEvent.stopPropagation(e);
-      onClick && onClick(line, e);
-    });
+    if (onClick) {
+      poly.on('click', e => {
+        L.DomEvent.stopPropagation(e);
+        onClick(line, e);
+      });
+    }
 
     this.layers.set(line, poly);
 
-    if (showDistance) {
-      this.addDistanceLabel(line);
-    }
+    if (showDistance) this._addDistLabel(line);
   }
 
-  drawCircle(circle, isSelected = false, onClick = null) {
-    
-    const color = isSelected ? "#FF0000" : circle.color;
+  // ── Circles ─────────────────────────────────────────────────────────────────
 
+  drawCircle(circle, isSelected = false, onClick = null) {
+    const color  = isSelected ? COLORS.selected : circle.color;
     const marker = L.circle([circle.latitude, circle.longitude], {
-      radius: circle.radius,
-      color: color,
-      weight: 2,
-      fillOpacity: 0, // ✅ toujours vide
+      radius:      circle.radius,
+      color,
+      weight:      isSelected ? 3 : 2,
+      fillOpacity: 0,
       bubblingMouseEvents: false,
     }).addTo(this.map);
 
-    marker.on('click', (e) => {
-      L.DomEvent.stopPropagation(e);
-      onClick && onClick(circle, e);
-    });
+    if (onClick) {
+      marker.on('click', e => {
+        L.DomEvent.stopPropagation(e);
+        onClick(circle, e);
+      });
+    }
 
     this.layers.set(circle, marker);
   }
 
-  // Supprimer un élément
+  // ── Remove single entity ────────────────────────────────────────────────────
+
   remove(entity) {
     const layer = this.layers.get(entity);
-    if (layer) {
-      this.map.removeLayer(layer);
-      this.layers.delete(entity);
-    }
+    if (layer) { this.map.removeLayer(layer); this.layers.delete(entity); }
   }
 
-  addDistanceLabel(line) {
-    // Calcul du milieu géographique
-    const midLat = (line.startPoint.latitude + line.endPoint.latitude) / 2;
+  // ── Distance labels ─────────────────────────────────────────────────────────
+
+  _addDistLabel(line) {
+    const midLat = (line.startPoint.latitude  + line.endPoint.latitude)  / 2;
     const midLng = (line.startPoint.longitude + line.endPoint.longitude) / 2;
-    const mid = L.latLng(midLat, midLng);
-  
-    // Calcul de la distance géodésique (mètres)
-    const from = L.latLng(line.startPoint.latitude, line.startPoint.longitude);
-    const to = L.latLng(line.endPoint.latitude, line.endPoint.longitude);
-    const distance = from.distanceTo(to);
-  
-    // Format du texte (affiche en km si > 1000m)
-    const formatted =
-      distance >= 1000 ? `${(distance / 1000).toFixed(2)} km` : `${distance.toFixed(0)} m`;
-  
-    // === Création du label avec mesure réelle ===
-    const tempDiv = document.createElement('div');
-    // tempDiv.className = 'distance-label-temp';
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.visibility = 'hidden';
-    tempDiv.innerHTML = formatted;
-    document.body.appendChild(tempDiv);
-  
-    const width = tempDiv.offsetWidth;
-    const height = tempDiv.offsetHeight;
-    document.body.removeChild(tempDiv);
-  
-    // Création de l'icône label
+    const dist   = L.latLng(line.startPoint.latitude, line.startPoint.longitude)
+                    .distanceTo(L.latLng(line.endPoint.latitude, line.endPoint.longitude));
+    const text   = GeoUtils.formatDistance(dist);
+
+    const { w, h } = this._measure(text);
     const icon = L.divIcon({
-      className: 'distance-label',
-      html: formatted,
-      iconSize: [width, height],
-      iconAnchor: [width / 2, height / 2],
+      className: 'dist-label',
+      html:      GeoUtils.escapeHtml(text),
+      iconSize:  [w, h],
+      iconAnchor:[w / 2, h / 2],
     });
-  
-    const labelMarker = L.marker(mid, {
-      icon,
-      interactive: false,
-    }).addTo(this.map);
-  
-    this.distanceLabels.set(line, labelMarker);
+
+    const marker = L.marker(L.latLng(midLat, midLng), { icon, interactive: false })
+                    .addTo(this.map);
+    this.distLabels.set(line, marker);
   }
-  
-  removeDistanceLabel(line) {
-    const label = this.distanceLabels.get(line);
-    if (label) {
-      this.map.removeLayer(label);
-      this.distanceLabels.delete(line);
-    }
+
+  removeDistLabel(line) {
+    const lbl = this.distLabels.get(line);
+    if (lbl) { this.map.removeLayer(lbl); this.distLabels.delete(line); }
   }
-  
-  clearDistanceLabels() {
-    this.distanceLabels.forEach(label => this.map.removeLayer(label));
-    this.distanceLabels.clear();
+
+  clearDistLabels() {
+    this.distLabels.forEach(l => this.map.removeLayer(l));
+    this.distLabels.clear();
   }
+
+  // ── Name labels ─────────────────────────────────────────────────────────────
 
   addNameLabel(point) {
-    const text = point.description || "Sans nom";
-    const latlng = L.latLng(point.latitude, point.longitude);
-  
-    // Création d’un div invisible pour mesurer la taille
-    const tempDiv = document.createElement('div');
-    // tempDiv.className = 'name-label-temp';
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.visibility = 'hidden';
-    tempDiv.innerHTML = text;
-    document.body.appendChild(tempDiv);
-  
-    const width = tempDiv.offsetWidth+10;
-    const height = tempDiv.offsetHeight;
-    document.body.removeChild(tempDiv);
-  
-    // Création du label visible
+    const text   = point.description || 'Sans nom';
+    const { w, h } = this._measure(text);
     const icon = L.divIcon({
-      className: 'name-label',
-      html: text,
-      iconSize: [width, height],
-      iconAnchor: [width / 2, height + 10], // positionné juste au-dessus du point
+      className:  'name-label',
+      html:       GeoUtils.escapeHtml(text),
+      iconSize:   [w + 10, h],
+      iconAnchor: [(w + 10) / 2, h + 10],
     });
-  
-    const labelMarker = L.marker(latlng, {
-      icon,
-      interactive: false,
-    }).addTo(this.map);
-  
-    this.nameLabels.set(point, labelMarker);
+
+    const marker = L.marker(L.latLng(point.latitude, point.longitude),
+                            { icon, interactive: false }).addTo(this.map);
+    this.nameLabels.set(point, marker);
   }
-  
+
   removeNameLabel(point) {
-    const label = this.nameLabels.get(point);
-    if (label) {
-      this.map.removeLayer(label);
-      this.nameLabels.delete(point);
-    }
+    const lbl = this.nameLabels.get(point);
+    if (lbl) { this.map.removeLayer(lbl); this.nameLabels.delete(point); }
   }
 
   clearNameLabels() {
-    this.nameLabels.forEach(label => this.map.removeLayer(label));
+    this.nameLabels.forEach(l => this.map.removeLayer(l));
     this.nameLabels.clear();
   }
-  
-  
-  
+
+  // ── Utility ─────────────────────────────────────────────────────────────────
+
+  /** Measure text width/height using the shared off-screen element (no forced reflow per call). */
+  _measure(text) {
+    this._measurer.textContent = text;
+    return { w: this._measurer.offsetWidth, h: this._measurer.offsetHeight };
+  }
+
+  getLayer(entity) {
+    return this.layers.get(entity);
+  }
 }
 
 export default Renderer;

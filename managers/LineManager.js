@@ -1,122 +1,64 @@
-import Line from "../class/Line.js";
+import Line from '../class/Line.js';
 
 class LineManager {
-  constructor(map, storageManager, pointManager) {
-    this.map = map;
-    this.storage = storageManager;
+  #lines = [];
+
+  constructor(storageManager, pointManager) {
+    this.storage      = storageManager;
     this.pointManager = pointManager;
-    this._lines = [];
-    
-    this.loadFromStorage();
+    this.#loadFromStorage();
   }
 
-  get lines(){
-    return this._lines;
-  }
-
-  set lines(lines){
-    this._lines = lines;
-  }
+  get lines() { return this.#lines; }
 
   addLine(startPoint, endPoint, save = false) {
-    this._lines.push(new Line(startPoint, endPoint));
-    if(save){
-      this.saveToStorage();      
-    }
-  }
-  
-  removeLine(startPoint, endPoint, save = false) {
-    this._lines = this._lines.filter(l =>
-      !(
-        (l.startPoint === startPoint && l.endPoint === endPoint) ||
-        (l.startPoint === endPoint   && l.endPoint === startPoint) // si non orientée
-      )
-    );
-  
+    this.#lines.push(new Line(startPoint, endPoint));
     if (save) this.saveToStorage();
   }
-  
 
-  unselectAll(){
-    if(this._lines){
-      this._lines.forEach(line => {
-        line.selected = false;
-      })
-    }
-  }
-
-  selectAll(){
-    if(this._lines){
-      this._lines.forEach(line => {
-        line.selected = true;
-      })
-    }
-  }
-
-  hasSelectedLine(){
-    return this._lines.some( line => line.selected == true);
-  }
-
-  getSelectedLines(){
-    const selectedLines = this._lines.filter(l => l.selected == true);
-    return selectedLines;
+  removeLine(startPoint, endPoint, save = false) {
+    this.#lines = this.#lines.filter(l =>
+      !((l.startPoint === startPoint && l.endPoint === endPoint) ||
+        (l.startPoint === endPoint   && l.endPoint === startPoint))
+    );
+    if (save) this.saveToStorage();
   }
 
   removeLinesByPoint(point, save = false) {
-    // Supprimer toutes les lignes où le point est startPoint ou endPoint
-    this._lines = this._lines.filter(l => l.startPoint !== point && l.endPoint !== point);
-  
-    if (save) {
-      this.saveToStorage();
-    }
+    this.#lines = this.#lines.filter(l => l.startPoint !== point && l.endPoint !== point);
+    if (save) this.saveToStorage();
   }
 
-  // getLinesWithPoint(point){
-  //   const allLines = this._lines.filter(line => line.startPoint == point || line.endPoint == point);
-  //   return allLines;
-  // }
+  hasLine(p1, p2) {
+    return this.#lines.some(l =>
+      (l.startPoint === p1 && l.endPoint === p2) ||
+      (l.startPoint === p2 && l.endPoint === p1)
+    );
+  }
 
   getLinesWithPoint(point) {
     const seen = new Set();
-    return this._lines.filter(line => {
-      if (line.startPoint === point || line.endPoint === point) {
-        // Construire une clé unique indépendante de l’ordre
-        const key = line.startPoint.id <= line.endPoint.id
-          ? `${line.startPoint.id}-${line.endPoint.id}`
-          : `${line.endPoint.id}-${line.startPoint.id}`;
-  
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }
-      return false;
+    return this.#lines.filter(line => {
+      if (line.startPoint !== point && line.endPoint !== point) return false;
+      const key = line.startPoint.id <= line.endPoint.id
+        ? `${line.startPoint.id}-${line.endPoint.id}`
+        : `${line.endPoint.id}-${line.startPoint.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }
-  
 
-  getLine(startPoint, endPoint){
-    return this._lines.find(l => l.startPoint === startPoint && l.endPoint === endPoint);
-  }
-
-  loadFromStorage() {
-    const lines = this.storage.load("lines");
-    // console.log("lines loaded : ", lines);
-
-    lines.forEach(l => {
+  #loadFromStorage() {
+    this.storage.load('lines').forEach(l => {
       const start = this.pointManager.getPointById(l.id1);
-      const end = this.pointManager.getPointById(l.id2);
-      if(start && end){
-        this.addLine(start, end);
-      }      
+      const end   = this.pointManager.getPointById(l.id2);
+      if (start && end) this.addLine(start, end);
     });
   }
 
   saveToStorage() {
-    let linesToSave = [];
-    this._lines.forEach(l =>{
-      linesToSave.push(l.datas());
-    })
-    this.storage.save("lines", linesToSave);
+    this.storage.save('lines', this.#lines.map(l => l.datas()));
   }
 }
 

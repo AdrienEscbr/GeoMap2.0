@@ -1,53 +1,37 @@
-import Circle from "../class/Circle.js";
+import Circle from '../class/Circle.js';
 
 class CircleManager {
-  constructor(map, storageManager) {
-    this.map = map;
+  #circles = [];
+
+  constructor(storageManager) {
     this.storage = storageManager;
-    this._circles = [];
-    
-    this.loadFromStorage();
+    this.#loadFromStorage();
   }
 
-  get circles(){
-    return this._circles;
-  }
-
-  set circles(circles){
-    this._circles = circles
-  }
+  get circles() { return this.#circles; }
 
   addCircle(radius, lat, lng, color, save = false) {
-    const id = this._circles.length > 0 ? this._circles[this._circles.length - 1].id + 1 : 1;
-    this._circles.push(new Circle(id, radius, lat, lng, color));
-    if(save){
-      this.saveToStorage();
-    }
+    const id = this.#circles.length > 0
+      ? this.#circles[this.#circles.length - 1].id + 1
+      : 1;
+    this.#circles.push(new Circle(id, radius, lat, lng, color));
+    if (save) this.saveToStorage();
   }
 
   removeCircle(id, save = false) {
-    this._circles = this._circles.filter(c => c.id !== id);
-    if(save){
-      this.saveToStorage();
-    }
+    this.#circles = this.#circles.filter(c => c.id !== id);
+    if (save) this.saveToStorage();
   }
 
-  loadFromStorage() {
-    const circles = this.storage.load("circles");
-    // console.log("circles loaded : ", circles);
-
-    circles.forEach(c => {
+  #loadFromStorage() {
+    this.storage.load('circles').forEach(c => {
       this.addCircle(c.radius, c.lat, c.lng, c.color);
     });
   }
 
   saveToStorage() {
-    let circlesToSave = [];
-    this._circles.forEach(c =>{
-      circlesToSave.push(c.datas());
-    })
-    this.storage.save("circles", circlesToSave);
+    this.storage.save('circles', this.#circles.map(c => c.datas()));
   }
 }
 
-export default CircleManager
+export default CircleManager;

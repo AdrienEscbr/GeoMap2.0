@@ -1,103 +1,50 @@
-import Point from "../class/Point.js";
+import Point from '../class/Point.js';
 
 class PointManager {
-  constructor(map, storageManager) {
-    this.map = map;
+  #points = [];
+
+  constructor(storageManager) {
     this.storage = storageManager;
-    this._points = [];
-    
-    this.loadFromStorage();
+    this.#loadFromStorage();
   }
 
-  set points(points){
-    this._points = points;
-  }
-
-  get points(){
-    return this._points;
-  }
+  get points() { return this.#points; }
 
   addPoint(id = null, desc, lat, lng, color, save = false) {
-    let idt = id;
-    if(idt === null){
-      idt = this._points.length > 0 ? this._points[this._points.length - 1].id + 1 : 1;
-    }
-    const p = new Point(idt, desc, lat, lng, color);
-    this._points.push(p);
-    if (save) {
-      this.saveToStorage();
-    }
+    const nextId = id ?? (this.#points.length > 0
+      ? this.#points[this.#points.length - 1].id + 1
+      : 1);
+    const p = new Point(nextId, desc, lat, lng, color);
+    this.#points.push(p);
+    if (save) this.saveToStorage();
     return p;
   }
 
   removePoint(point, save = false) {
-    this._points = this._points.filter(p => p !== point);
-    if(save){
-      this.saveToStorage();
-    }    
-  }
-
-  unselectAll(){
-    if(this._points){
-      this._points.forEach(point => {
-        point.selected = false;
-      })
-    }
-  }
-
-  selectAll(){
-    if(this._points){
-      this._points.forEach(point => {
-        point.selected = true;
-      })
-    }
-  }
-
-  hasSelectedPoint(){
-    return this._points.some( point => point.selected == true);
-  }
-
-  getSelectedPoints(){
-    const selectedPoints = this._points.filter(p => p.selected == true);
-    return selectedPoints;
-  }
-
-  getPoint(point){
-    const foundPoints = this._points.filter(p => p === point);
-    if(foundPoints){
-      return foundPoints[0];
-    }
-    return null;
-  }
-
-  getIndex(pointId){
-    const idx = this._points.findIndex((p) => p.id === pointId);
-    return idx;
+    this.#points = this.#points.filter(p => p !== point);
+    if (save) this.saveToStorage();
   }
 
   getPointById(id) {
-    return this._points.find(p => p.id === id);
+    return this.#points.find(p => p.id === id);
   }
 
   getPointAt(lat, lng) {
-    return this._points.find(p => p.lat === lat && p.lng === lng);
+    return this.#points.find(p => p.latitude === lat && p.longitude === lng);
   }
 
-  loadFromStorage() {
-    const points = this.storage.load("points");
-    // console.log("points loaded : ", points);
+  reorder(orderedIds) {
+    this.#points.sort((a, b) => orderedIds.indexOf(a.id) - orderedIds.indexOf(b.id));
+  }
 
-    points.forEach(p => {
+  #loadFromStorage() {
+    this.storage.load('points').forEach(p => {
       this.addPoint(p.id, p.desc, p.lat, p.lng, p.color);
     });
   }
 
   saveToStorage() {
-    let pointsToSave = [];
-    this._points.forEach(p =>{
-      pointsToSave.push(p.datas());
-    })
-    this.storage.save("points", pointsToSave);
+    this.storage.save('points', this.#points.map(p => p.datas()));
   }
 }
 

@@ -1,49 +1,24 @@
 class Line {
+  #startPoint;
+  #endPoint;
+
   constructor(startPoint, endPoint) {
-    this._startPoint = startPoint;
-    this._endPoint = endPoint;
-    this._marker = null;
-    this._selected = false;
+    this.#startPoint = startPoint;
+    this.#endPoint   = endPoint;
   }
 
-  datas(){
+  get startPoint() { return this.#startPoint; }
+  get endPoint()   { return this.#endPoint; }
+
+  set startPoint(v) { this.#startPoint = v; }
+  set endPoint(v)   { this.#endPoint   = v; }
+
+  datas() {
     return {
-        id1 : this._startPoint.id,
-        id2 : this._endPoint.id,
-    }
+      id1: this.#startPoint.id,
+      id2: this.#endPoint.id,
+    };
   }
-
-  set startPoint(startPoint) {
-    if (startPoint !== this._startPoint)
-        this._startPoint = startPoint;
-  }
-  get startPoint(){
-    return this._startPoint;
-  }
-
-  set endPoint(desc) {
-    if (desc !== this._endPoint)
-        this._endPoint = desc;
-  }
-  get endPoint(){
-    return this._endPoint;
-  }
-
-  set marker(marker){
-    this._marker = marker;
-  }
-  get marker(){
-    return this._marker;
-  }
-
-  set selected(selected){
-    this._selected = selected;
-  }
-  get selected(){
-    return this._selected;
-  }
-
-
 }
 
 export default Line;

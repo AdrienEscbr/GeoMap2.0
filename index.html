@@ -1,349 +1,265 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="fr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Carte interactive</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GéoMap — Carte interactive</title>
+  <meta name="description" content="Créez et gérez vos points géographiques interactifs avec GéoMap." />
+  <meta name="author" content="Adrien ESCOUBEYROU" />
 
-    <!-- Métadonnées SEO -->
-    <meta name="description"
-        content="Créez et gérez vos points géographiques interactifs avec GéoMap. Importez, exportez et reliez facilement des points sur une carte interactive." />
-    <meta name="keywords"
-        content="carte interactive, GéoMap, points géographiques, Leaflet, Bootstrap, importation, exportation, gestion de cartes, tracés, coordonnées" />
-    <meta name="author" content="Adrien ESCOUBEYROU" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://adrienescbr.github.io/GeoMap/" />
-
-    <!-- Open Graph (pour le partage sur les réseaux sociaux) -->
-    <meta property="og:title" content="GéoMap - Carte Interactive" />
-    <meta property="og:description"
-        content="Gérez vos points géographiques et explorez vos données sur une carte interactive avec GéoMap." />
-    <meta property="og:image" content="https://adrienescbr.github.io/GeoMap/GeoMap.png" />
-    <meta property="og:url" content="https://adrienescbr.github.io/GeoMap/" />
-    <meta property="og:type" content="website" />
-
-    <!-- Twitter Cards -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GéoMap - Carte Interactive" />
-    <meta name="twitter:description"
-        content="Gérez vos points géographiques et explorez vos données sur une carte interactive avec GéoMap." />
-    <meta name="twitter:image" content="https://adrienescbr.github.io/GeoMap/GeoMap.png" />
-
-
-    <!-- Bootstrap CSS (sans integrity/crossorigin) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-
-    <!-- Leaflet CSS (sans integrity/crossorigin) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-
-    <!-- Notre propre fichier CSS -->
-    <link rel="stylesheet" href="./style/style.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="./style/style.css" />
 </head>
 
-<body class="d-flex flex-column min-vh-100 align-items-center ">
+<body>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
-        <div class="container-fluid">
-            <!-- Branding -->
-            <a class="navbar-brand me-3" href="#">GéoMap</a>
+  <!-- ══════════════════════════════ NAVBAR ════════════════════════════════ -->
+  <nav class="app-navbar" role="navigation" aria-label="Navigation principale">
+    <div class="app-navbar__left">
+      <div class="app-navbar__brand">GéoMap</div>
+      <button class="app-navbar__btn"
+              data-bs-toggle="offcanvas" data-bs-target="#sidebar"
+              aria-controls="sidebar">
+        ☰&nbsp;Menu
+      </button>
+    </div>
+    <div class="app-navbar__actions">
+      <button class="app-navbar__btn"
+              data-bs-toggle="modal" data-bs-target="#importExportModal">
+        ⇅&nbsp;Import / Export
+      </button>
+    </div>
+  </nav>
 
-            <!-- Toggler pour petits écrans -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+  <!-- ══════════════════════════════ SIDEBAR ═══════════════════════════════ -->
+  <div class="offcanvas offcanvas-start" id="sidebar"
+       tabindex="-1" aria-labelledby="sidebarLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="sidebarLabel">Gestion des points</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+              aria-label="Fermer"></button>
+    </div>
+
+    <div class="offcanvas-body d-flex flex-column gap-4">
+
+      <!-- Add point -->
+      <section aria-labelledby="add-section-title">
+        <h6 id="add-section-title" class="sidebar-section__title">Nouveau point</h6>
+        <form id="add-point-form" novalidate>
+          <div class="mb-2">
+            <label for="new-desc" class="form-label form-label-sm">Description</label>
+            <input type="text" class="form-control form-control-sm" id="new-desc"
+                   placeholder="Ex : Paris" required />
+          </div>
+          <div class="mb-2">
+            <label for="new-coords" class="form-label form-label-sm">
+              Coordonnées <span class="text-muted">(lat, lng)</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="new-coords"
+                   placeholder="48.8566, 2.3522" required />
+          </div>
+          <div id="coord-feedback" class="mb-2" aria-live="polite"></div>
+          <div class="mb-3 d-flex align-items-center gap-2">
+            <label for="new-color" class="form-label form-label-sm mb-0">Couleur</label>
+            <input type="color" class="form-control form-control-color form-control-sm"
+                   id="new-color" value="#3498db" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100"
+                  id="add-point-form-btn">Ajouter</button>
+        </form>
+      </section>
+
+      <!-- Point list -->
+      <section aria-labelledby="list-section-title" class="flex-grow-1 overflow-auto">
+        <h6 id="list-section-title" class="sidebar-section__title">Points</h6>
+        <ul id="point-list" class="point-list" aria-label="Liste des points"></ul>
+      </section>
+
+      <!-- Connect -->
+      <section aria-labelledby="connect-section-title">
+        <h6 id="connect-section-title" class="sidebar-section__title">Relier deux points</h6>
+        <div class="mb-2">
+          <label for="select-point1" class="form-label form-label-sm">Point A</label>
+          <select id="select-point1" class="form-select form-select-sm">
+            <option value="" disabled selected>Choisir…</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label for="select-point2" class="form-label form-label-sm">Point B</label>
+          <select id="select-point2" class="form-select form-select-sm">
+            <option value="" disabled selected>Choisir…</option>
+          </select>
+        </div>
+        <button id="connect-btn" class="btn btn-outline-primary btn-sm w-100"
+                disabled>Relier</button>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════ MAP ═════════════════════════════════ -->
+  <main id="map-container">
+    <div id="map" aria-label="Carte interactive géographique"></div>
+
+    <!-- Status bar -->
+    <div id="status-bar" class="status-bar" role="status"
+         aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar" role="toolbar" aria-label="Outils de dessin">
+
+      <div class="toolbar__group">
+        <button class="toolbar__btn" id="show-names-btn"
+                title="Noms des points (N)" aria-label="Afficher les noms" aria-pressed="false">
+          <img src="./assets/font.png" alt="" aria-hidden="true" />
+          <span>Noms</span>
+        </button>
+        <button class="toolbar__btn" id="show-distances-btn"
+                title="Distances (D)" aria-label="Afficher les distances" aria-pressed="false">
+          <img src="./assets/compass.png" alt="" aria-hidden="true" />
+          <span>Dist.</span>
+        </button>
+      </div>
+
+      <div class="toolbar__sep" role="separator"></div>
+
+      <div class="toolbar__group">
+        <button class="toolbar__btn" id="add-point-btn"
+                title="Placer un point (P)" aria-label="Placer un point" aria-pressed="false">
+          <img src="./assets/aim.png" alt="" aria-hidden="true" />
+          <span>Point</span>
+        </button>
+        <button class="toolbar__btn" id="add-line-btn"
+                title="Relier des points (L)" aria-label="Relier des points" aria-pressed="false">
+          <img src="./assets/line-segment.png" alt="" aria-hidden="true" />
+          <span>Ligne</span>
+        </button>
+        <button class="toolbar__btn" id="circle-btn"
+                title="Tracer un cercle (C)" aria-label="Tracer un cercle" aria-pressed="false">
+          <img src="./assets/circle.png" alt="" aria-hidden="true" />
+          <span>Cercle</span>
+        </button>
+      </div>
+
+      <div class="toolbar__sep" role="separator"></div>
+
+      <div class="toolbar__group">
+        <button class="toolbar__btn" id="stretch-btn"
+                title="Prolonger une ligne (E)" aria-label="Prolonger une ligne" aria-pressed="false">
+          <img src="./assets/stretch.png" alt="" aria-hidden="true" />
+          <span>Étendre</span>
+        </button>
+        <button class="toolbar__btn" id="structure-angle"
+                title="Rotation de structure (R)" aria-label="Faire pivoter" aria-pressed="false">
+          <img src="./assets/angle.png" alt="" aria-hidden="true" />
+          <span>Pivot</span>
+        </button>
+        <button class="toolbar__btn" id="resize-circle-btn"
+                title="Redimensionner un cercle" aria-label="Redimensionner un cercle" aria-pressed="false">
+          <img src="./assets/resize.png" alt="" aria-hidden="true" />
+          <span>Rayon</span>
+        </button>
+        <button class="toolbar__btn" id="element-color"
+                title="Changer la couleur (K)" aria-label="Changer la couleur" disabled>
+          <img src="./assets/color-palette.png" alt="" aria-hidden="true" />
+          <span>Couleur</span>
+        </button>
+      </div>
+
+      <div class="toolbar__sep" role="separator"></div>
+
+      <div class="toolbar__group">
+        <button class="toolbar__btn toolbar__btn--danger" id="delete-btn"
+                title="Supprimer la sélection (Suppr)" aria-label="Supprimer" disabled>
+          <img src="./assets/bin.png" alt="" aria-hidden="true" />
+          <span>Suppr.</span>
+        </button>
+        <button class="toolbar__btn" id="erase-btn"
+                title="Gomme — cliquer pour effacer (G)" aria-label="Gomme" aria-pressed="false">
+          <img src="./assets/rubber.png" alt="" aria-hidden="true" />
+          <span>Gomme</span>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ════════════════════════ IMPORT / EXPORT MODAL ═══════════════════════ -->
+  <div class="modal fade" id="importExportModal" tabindex="-1"
+       aria-labelledby="importExportLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importExportLabel">Import / Export</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+                  aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex gap-2 mb-3">
+            <button id="export-btn" class="btn btn-success btn-sm" disabled>
+              Copier les données
             </button>
-
-            <!-- Contenu collapsible -->
-            <div class="collapse navbar-collapse justify-content-start" id="navbarNav">
-                <ul class="navbar-nav">
-                    <!-- Nav-item pour ouvrir le menu des points -->
-                    <li class="nav-item">
-                        <a class="nav-link hover-underline active" href="#" role="button" data-bs-toggle="offcanvas"
-                            data-bs-target="#sidebar" aria-controls="sidebar">
-                            Gestion des points
-                        </a>
-                    </li>
-
-                    <!-- Nav-item Importer/Exporter -->
-                    <li class="nav-item">
-                        <a class="nav-link hover-underline active" href="#" data-bs-toggle="modal" data-bs-target="#importExportModal">
-                            Importer/Exporter
-                        </a>
-                    </li>
-                </ul>
-            </div>
+            <button id="clear-area-btn" class="btn btn-outline-secondary btn-sm">
+              Effacer
+            </button>
+          </div>
+          <textarea id="import-export-area" class="form-control font-monospace"
+                    rows="10" spellcheck="false"
+                    placeholder="Collez du JSON ici pour importer…"></textarea>
+          <div class="d-flex align-items-center gap-3 mt-3">
+            <button id="import-btn" class="btn btn-primary btn-sm" disabled>
+              Importer
+            </button>
+            <div id="import-feedback" aria-live="polite"></div>
+          </div>
         </div>
-    </nav>
-
-    <!-- Sidebar Offcanvas (Bootstrap) -->
-    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebar" aria-labelledby="sidebarLabel">
-        <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="sidebarLabel">Gestion des points</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Fermer"></button>
-        </div>
-        <div class="offcanvas-body">
-            <!-- Formulaire pour ajouter un nouveau point -->
-            <form id="add-point-form" class="mb-4">
-                <div class="mb-3">
-                    <label for="new-desc" class="form-label">Description :</label>
-                    <input type="text" class="form-control" id="new-desc" placeholder="Ex : Nouvelle localisation"
-                        required />
-                </div>
-
-                <!-- Nouvelle input unique “coordonnées” -->
-                <div class="mb-3">
-                    <label for="new-coords" class="form-label">
-                        Coordonnées (latitude, longitude) :
-                    </label>
-                    <input type="text" class="form-control" id="new-coords" placeholder="Ex : 48.8566, 2.3522"
-                        required />
-                </div>
-
-                <!-- Zone d’affichage des labels ou du message d’erreur -->
-                <div id="coord-feedback" class="mb-3"></div>
-
-                <div class="mb-3">
-                    <label for="new-color" class="form-label">Couleur du repère :</label>
-                    <input type="color" class="form-control form-control-color" id="new-color" value="#3388ff"
-                        title="Choisir une couleur" />
-                </div>
-                <button type="submit" class="btn btn-success w-100" id="add-point-form-btn">
-                    Ajouter le point
-                </button>
-            </form>
-
-            <!-- Section rétractable "Liste des points" -->
-            <div class="accordion" id="pointsAccordion">
-                <div class="accordion-item mb-2">
-                    <h2 class="accordion-header" id="headingList">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapseList" aria-expanded="true" aria-controls="collapseList">
-                            Liste des points
-                        </button>
-                    </h2>
-                    <div id="collapseList" class="accordion-collapse collapse show" aria-labelledby="headingList">
-                        <div class="accordion-body p-0">
-                            <ul id="point-list" class="list-group list-group-flush"></ul>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="accordion-item mb-2">
-                    <h2 class="accordion-header" id="headingConnect">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapseConnect" aria-expanded="true" aria-controls="collapseConnect">
-                            Relier deux points
-                        </button>
-                    </h2>
-                    <div id="collapseConnect" class="accordion-collapse collapse show" aria-labelledby="headingConnect">
-                        <div class="accordion-body">
-                            <div class="mb-3">
-                                <label for="select-point1" class="form-label">Point A :</label>
-                                <select id="select-point1" class="form-select">
-                                    <option value="" selected disabled>Choisir...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="select-point2" class="form-label">Point B :</label>
-                                <select id="select-point2" class="form-select">
-                                    <option value="" selected disabled>Choisir...</option>
-                                </select>
-                            </div>
-                            <button id="connect-btn" class="btn btn-primary w-100">
-                                Relier
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- La carte Leaflet -->
-    <main class="flex-grow-1 d-flex w-100 h-100">
-        <div id="map" class="w-100 h-100" aria-label="Carte interactive pour gérer les points géographiques"></div>
-    </main>
-
-    <div class="toolbar">
-        <ul class="gap-10 d-flex align-items-center justify-content-evenly w-100 h-100 p-0 m-0 flex-wrap">
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="show-names-btn"
-                    title="Show location names"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/font.png" alt="location names"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="show-distances-btn"
-                    title="Show distances"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/compass.png" alt="distance"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="add-point-btn"
-                    title="Add point"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/aim.png" alt="aim at location"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="add-line-btn"
-                    title="Add lines between selected points"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/line-segment.png" alt="add line"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center"
-                    title="Stretch existing line"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;" id="stretch-btn">
-                    <img src="./assets/stretch.png" alt="stretch line"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="circle-btn"
-                    title="Add circle centered on existing point"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/circle.png" alt="draw cricle"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="structure-angle"
-                    title="Modify ligne angle"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/angle.png" alt="line angle"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="element-color"
-                    title="Modify selected elements color"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/color-palette.png" alt="change color"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="delete-btn"
-                    title="Remove selection"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/bin.png" alt="delete selection"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-            <li class="nav-item d-flex align-items-center justify-content-center m-0 p-0">
-                <button class="btn btn-light p-1 d-flex align-items-center justify-content-center" id="erase-btn"
-                    title="Remove pointed element"
-                    style="width: 30px; height: 30px; border: 1px solid #ccc; border-radius: 5px;">
-                    <img src="./assets/rubber.png" alt="erase pointed element"
-                        style="max-width: 100%; max-height: 100%;" />
-                </button>
-            </li>
-        </ul>
-    </div>
-
-
-
-
-    <div class="modal fade" id="importExportModal" tabindex="-1" aria-labelledby="importExportLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="importExportLabel">
-                        Importer / Exporter les données
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3 d-flex align-items-start">
-                        <button id="export-btn" class="btn btn-success me-2" disabled>
-                            Copier dans le presse-papier
-                        </button>
-                        <button id="clear-area-btn" class="btn btn-secondary me-2">
-                            Effacer la zone
-                        </button>
-
-                    </div>
-                    <textarea id="import-export-area" class="form-control flex-grow-1" rows="8"
-                        placeholder="Coller vos données au format JSON pour les importer…"></textarea>
-
-                    <button id="import-btn" class="mt-3 btn btn-primary" disabled>
-                        Importer depuis la zone de texte
-                    </button>
-                    <div id="import-feedback" class="mt-2"></div>
-                </div>
-            </div>
+  <!-- ════════════════════════ EDIT POINT MODAL ════════════════════════════ -->
+  <div class="modal fade" id="editPointModal" tabindex="-1"
+       aria-labelledby="editPointModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editPointModalLabel">Modifier le point</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+                  aria-label="Fermer"></button>
         </div>
-    </div>
-
-    <!-- Modal Modifier un point -->
-    <div class="modal fade" id="editPointModal" tabindex="-1" aria-labelledby="editPointModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-            <h5 class="modal-title" id="editPointModalLabel">Modifier le point</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-    
-            <div class="modal-body">
-            <form id="edit-point-form">
-                <div class="mb-3">
-                <label for="edit-desc" class="form-label">Description :</label>
-                <input type="text" class="form-control" id="edit-desc" required>
-                </div>
-    
-                <div class="mb-3">
-                <label for="edit-coords" class="form-label">Coordonnées (latitude, longitude) :</label>
-                <input type="text" class="form-control" id="edit-coords" placeholder="Ex : 48.8566, 2.3522" required>
-                </div>
-    
-                <div class="mb-3">
-                <label for="edit-color" class="form-label">Couleur du repère :</label>
-                <input type="color" class="form-control form-control-color" id="edit-color" value="#3388ff">
-                </div>
-            </form>
-            <div id="edit-feedback" class="text-danger small mt-2"></div>
-            </div>
-    
-            <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-            <button type="button" class="btn btn-primary" id="save-edit-btn">Enregistrer</button>
-            </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="edit-desc" class="form-label">Description</label>
+            <input type="text" class="form-control" id="edit-desc" required />
+          </div>
+          <div class="mb-3">
+            <label for="edit-coords" class="form-label">Coordonnées (lat, lng)</label>
+            <input type="text" class="form-control" id="edit-coords"
+                   placeholder="48.8566, 2.3522" />
+          </div>
+          <div class="mb-3">
+            <label for="edit-color" class="form-label">Couleur</label>
+            <input type="color" class="form-control form-control-color" id="edit-color" />
+          </div>
+          <p id="edit-feedback" class="text-danger small mb-0"
+             aria-live="polite"></p>
         </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-primary btn-sm"
+                  id="save-edit-btn">Enregistrer</button>
         </div>
+      </div>
     </div>
-  
+  </div>
 
-
-    <!-- Footer -->
-    <footer class="bg-light text-center py-3 mt-auto pb-0 w-100">
-        <p>&copy; 2025 GéoMap - Tous droits réservés.</p>
-    </footer>
-
-
-    <!-- Bootstrap JS (sans integrity/crossorigin) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Leaflet JS (sans integrity/crossorigin) -->
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <!-- Sortable.js pour réordonner la liste -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <!-- Make sure you put this AFTER leaflet.js -->
-    <script src="https://cdn.jsdelivr.net/npm/leaflet.geodesic"></script>
-    <!-- Variables HTML en JS -->
-    <script src="./config/variables.js"></script>
-    <!-- Notre propre script JS -->
-    <script type="module" src="./main.js"></script>
-
+  <!-- ════════════════════════════ SCRIPTS ═════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.geodesic"></script>
+  <script type="module" src="./main.js"></script>
 </body>
-
 </html>

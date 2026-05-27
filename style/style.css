@@ -1,197 +1,656 @@
-/* Hauteur de la carte pour occuper tout l’écran */
-/* #map {
-  height: calc(100vh - 56px);
-    width: 100%;
-  } */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Design tokens
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --navbar-h:        52px;
+  --toolbar-h:       72px;
+  --statusbar-h:     28px;
 
-  /* body {
-    padding-top: 56px;
-  } */
-  
-  html, body {
-    height: 100%; /* Assure que le body occupe tout l'écran */
-    margin: 0;
-    
+  --color-bg:        #f8f9fa;
+  --color-surface:   #ffffff;
+  --color-border:    #dee2e6;
+  --color-text:      #212529;
+  --color-muted:     #6c757d;
+  --color-primary:   #2c6fad;
+  --color-danger:    #dc3545;
+  --color-success:   #198754;
+
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.12);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.15);
+
+  --transition: 150ms ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Reset / base
+   ═══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Navbar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.app-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--navbar-h);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 1100;
+}
+
+.app-navbar__brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+  letter-spacing: -.3px;
+}
+
+.app-navbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-navbar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.app-navbar__btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: background var(--transition), border-color var(--transition);
+  white-space: nowrap;
+}
+.app-navbar__btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Map container
+   ═══════════════════════════════════════════════════════════════════════════ */
+#map-container {
+  position: fixed;
+  top: var(--navbar-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Toolbar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.toolbar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 900;
+}
+
+.toolbar__group {
+  display: flex;
+  gap: 2px;
+}
+
+.toolbar__sep {
+  width: 1px;
+  height: 32px;
+  background: var(--color-border);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+.toolbar__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 52px;
+  height: 52px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 0.6rem;
+  font-weight: 500;
+  transition: background var(--transition), border-color var(--transition),
+              color var(--transition);
+  padding: 4px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.toolbar__btn img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.toolbar__btn span {
+  line-height: 1;
+  letter-spacing: .2px;
+}
+
+.toolbar__btn:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: var(--color-border);
+}
+
+.toolbar__btn.active {
+  background: #dbeafe;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.toolbar__btn.active img {
+  filter: invert(28%) sepia(73%) saturate(500%) hue-rotate(185deg);
+}
+
+.toolbar__btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.toolbar__btn--danger.active,
+.toolbar__btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Status bar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.status-bar {
+  position: absolute;
+  bottom: calc(var(--toolbar-h) + 28px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(33, 37, 41, 0.82);
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 5px 14px;
+  border-radius: 20px;
+  pointer-events: none;
+  z-index: 890;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  transition: opacity 0.2s;
+}
+.status-bar:empty { opacity: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sidebar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sidebar-section__title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Point list
+   ═══════════════════════════════════════════════════════════════════════════ */
+.point-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.point-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 0 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: background var(--transition);
+  min-height: 44px;
+}
+
+.point-list-item:hover { background: #f1f3f5; }
+
+.drag-handle {
+  cursor: grab;
+  color: var(--color-muted);
+  font-size: 1rem;
+  line-height: 1;
+  user-select: none;
+  align-self: center;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+
+.point-list-item__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 0;
+}
+
+.point-info {
+  font-size: 0.82rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.point-coords {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.point-list-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.point-list-item__bar {
+  width: 6px;
+  align-self: stretch;
+  flex-shrink: 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Inline delete confirmation */
+.point-list-item__confirm {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  padding: 0 6px 0 2px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-danger, #dc3545);
+}
+.point-list-item--confirming .point-list-item__body,
+.point-list-item--confirming .point-list-item__actions { display: none; }
+.point-list-item--confirming .point-list-item__confirm  { display: flex; }
+.point-list-item--confirming { background: #fff5f5; border-color: #fca5a5; }
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--transition);
+  padding: 0;
+}
+.btn-icon:hover          { background: #e9ecef; }
+.btn-icon--danger:hover  { background: #fee2e2; }
+.btn-icon img            { width: 14px; height: 14px; object-fit: contain; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Map labels
+   ═══════════════════════════════════════════════════════════════════════════ */
+.dist-label,
+.name-label {
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(0,0,0,.2);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Cursor label (shown during add-point / circle modes)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cursor-label {
+  position: fixed;
+  background: rgba(33,37,41,.85);
+  color: #fff;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 9999;
+  display: none;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Color overlay
+   ═══════════════════════════════════════════════════════════════════════════ */
+.color-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+  z-index: 99999;
+  width: 220px;
+  animation: fadeIn 0.12s ease;
+}
+
+.color-overlay__title {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.color-overlay__picker {
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.color-overlay__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rotation UI
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rotation-ui {
+  position: fixed;
+  top: calc(var(--navbar-h) + 12px);
+  right: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-md);
+  z-index: 9999;
+  width: 230px;
+  animation: fadeIn 0.12s ease;
+}
+
+.rotation-ui__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.rotation-ui__value {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: var(--color-primary);
+}
+
+.rotation-ui input[type="range"] {
+  width: 100%;
+  margin-bottom: 12px;
+  accent-color: var(--color-primary);
+}
+
+.rotation-ui__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Resize Circle UI  (top-right panel, same position as rotation-ui)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.resize-ui {
+  position: fixed;
+  top: calc(var(--navbar-h) + 12px);
+  right: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-md);
+  z-index: 9999;
+  width: 230px;
+  animation: fadeInRight 0.14s ease;
+}
+
+.resize-ui__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.resize-ui__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.resize-ui__value {
+  font-family: monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.resize-ui__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.resize-ui__field input {
+  flex: 1;
+}
+
+.resize-ui__unit {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.resize-ui__hint {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  margin-bottom: 12px;
+}
+
+.resize-ui__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Utilities & animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, -48%); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive toolbar
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Desktop (> 900 px): pill centered above the map — no change.
+
+   Tablet (641 – 900 px): the pill may be wider than the viewport.
+     Keep the pill shape, cap the width and allow horizontal scroll.
+
+   Mobile (≤ 640 px): replace the pill with a full-width bottom strip
+     that scrolls horizontally.  A white fade on both sides signals that
+     more buttons are reachable by scrolling.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet ──────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .toolbar {
+    /* Prevent the pill from extending past the viewport edges */
+    max-width: calc(100vw - 32px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* Visually hide the scrollbar while keeping it functional */
+    scrollbar-width: none;
+  }
+  .toolbar::-webkit-scrollbar { display: none; }
+
+  /* Keep every group and separator on one line */
+  .toolbar__group,
+  .toolbar__sep { flex-shrink: 0; }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Recalculate dependent positions with the new toolbar height */
+  :root {
+    --toolbar-h: 62px;
   }
 
-  #map {
-    height: 100%; /* Permet à la carte de prendre toute la hauteur de son conteneur */
-    width: 100%; /* Optionnel, mais utile pour éviter des débordements */
+  /* Full-width strip flush with the bottom of the screen */
+  .toolbar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: 100%;
+    transform: none;
+    /* Rounded only on the top, flush on the bottom */
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+    /* Shadow goes upward instead of all-around */
+    box-shadow: 0 -3px 16px rgba(0, 0, 0, .12);
+    padding: 6px 32px; /* extra horizontal padding keeps edge buttons away from the fade */
   }
 
-  main {
-    flex-grow: 1; /* Fait grandir le contenu principal pour occuper tout l'espace disponible */
-    display: flex; /* Permet de gérer des enfants comme #map */
+  /* Tighter buttons — still ≥ 44 px (WCAG 2.5.5 minimum touch target) */
+  .toolbar__btn {
+    width:  44px;
+    height: 44px;
+    flex-shrink: 0;
+    font-size: 0.55rem;
   }
-  
-  /* Petite icône carrée pour afficher la couleur dans la liste */
-  .color-box {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    margin-right: 8px;
-    vertical-align: middle;
-    border: 1px solid #000;
-  }
-  
-  /* Curseur de déplacement pour les éléments de la liste */
-  .drag-handle {
-    cursor: grab;
-    margin-right: 8px;
-  }
-  
-  /* Styles pour le feedback (labels ou erreur) */
-  #coord-feedback label {
-    display: block;
-    font-weight: 500;
-  }
-  #coord-feedback .text-danger {
-    font-size: 0.9rem;
-  }
-  
-
-  #point-list li {
-    cursor: pointer;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-    transition: background-color 0.2s ease;
-  }
-  
-  #point-list li:hover {
-    background-color: #f8d7da; /* Couleur d'indication */
-  }
-  
-
-  .distance-label {
-    background: white;
-    color: black;
-    padding: 2px 6px;
-    border: 1px solid #888;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
-    text-align: center;
-  }
-  
-  .popup-icon-btn {
-    width: 25px;
-    height: 25px;
-    padding: 0;
-    border: none;
-    background: #f0f0f0;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  
-  .popup-icon-btn img {
-    width: 16px;
-    height: 16px;
-    object-fit: contain;
-  }
-  
-  .config-panel input[type="number"] {
-    width: 100%;
+  .toolbar__btn img {
+    width:  17px;
+    height: 17px;
   }
 
-  .config-panel{
-    top: 6vh;
+  /* Separators must not shrink or disappear */
+  .toolbar__sep {
+    flex-shrink: 0;
+    margin: 0 4px;
   }
 
-  #cursor-coords {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-    font-family: monospace;
+  /* Status bar sits just above the toolbar strip */
+  .status-bar {
+    bottom: calc(var(--toolbar-h) + 10px);
   }
 
-  .toolbar{
-    position: absolute;
-    bottom: 12vh;
-    background-color: white;
-    border-radius: 5px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-    padding: 5px;
-    z-index: 999;
-  }
-
-  .gap-10{
-    gap: 10px;
-  }
-  
-  .distance-label {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid black;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 12px;
-    color: black;
-    font-weight: 500;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    white-space: nowrap;
-    user-select: none;
-    pointer-events: none;
-    text-align: center;
-  }
-
-  .name-label {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid black;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 12px;
-    font-weight: 500;
-    color: black;
-    white-space: nowrap;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    transform: translateY(-12px);
-    user-select: none;
-    pointer-events: none;
-    text-align: center;
-  }
-
-
-  .hover-underline {
-    display: inline-block;
-    position: relative;
-  }
-  .hover-underline::after {
+  /* ── Scroll-fade edge hints ──────────────────────────────────────────────
+     Gradient overlays on #map-container signal that the toolbar has more
+     buttons reachable by scrolling left / right.
+     pointer-events: none keeps them invisible to touch.              ── */
+  #map-container::before,
+  #map-container::after {
     content: '';
     position: absolute;
-    width: 100%;
-    transform: scaleX(0);
-    height: 2px;
     bottom: 0;
+    height: var(--toolbar-h);
+    width: 40px;
+    z-index: 901;          /* just above .toolbar (900) */
+    pointer-events: none;
+  }
+
+  #map-container::before {
     left: 0;
-    background-color: lightgray;
-    transform-origin: bottom right;
-    transition: transform 0.25s ease-out;
-  }
-  .hover-underline:hover::after {
-    transform: scaleX(1);
-    transform-origin: bottom left;
+    background: linear-gradient(to right,
+      var(--color-surface) 25%,
+      transparent 100%
+    );
+    border-top-left-radius: var(--radius-lg);
   }
 
-  .color-overlay {
-    animation: fadeIn 0.15s ease-in-out;
+  #map-container::after {
+    right: 0;
+    background: linear-gradient(to left,
+      var(--color-surface) 25%,
+      transparent 100%
+    );
+    border-top-right-radius: var(--radius-lg);
   }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translate(-50%, -48%); }
-    to   { opacity: 1; transform: translate(-50%, -50%); }
-  }
-  
-
-  .rotation-ui{
-    position: fixed;
-    top: 9vh;
-    right: 20px;
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    z-index: 9999;
-    width: 220px;
-  }
+}

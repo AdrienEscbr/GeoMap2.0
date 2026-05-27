@@ -1,86 +1,44 @@
+import { POINT_RADIUS, COLORS } from '../config/constants.js';
+
 class Point {
-  constructor(id, desc, lat, lng, color) {
-    this._id = id;
-    this._description = desc;
-    this._latitude = lat;
-    this._longitude = lng;
-    this._color = color;
-    this._radius = 8;
-    this._marker = null;
-    this._selected = false;
+  #id;
+  #description;
+  #latitude;
+  #longitude;
+  #color;
+  #radius;
+
+  constructor(id, desc, lat, lng, color = COLORS.defaultNew) {
+    this.#id          = id;
+    this.#description = desc;
+    this.#latitude    = lat;
+    this.#longitude   = lng;
+    this.#color       = color;
+    this.#radius      = POINT_RADIUS;
   }
 
-  datas(){
+  get id()          { return this.#id; }
+  get description() { return this.#description; }
+  get latitude()    { return this.#latitude; }
+  get longitude()   { return this.#longitude; }
+  get color()       { return this.#color; }
+  get radius()      { return this.#radius; }
+
+  set description(v) { this.#description = v; }
+  set latitude(v)    { this.#latitude    = v; }
+  set longitude(v)   { this.#longitude   = v; }
+  set color(v)       { this.#color       = v; }
+  set radius(v)      { this.#radius      = v; }
+
+  datas() {
     return {
-        id : this._id,
-        desc : this._description,
-        lat : this._latitude,
-        lng : this.longitude,
-        color : this._color,
-        radius : this._radius,
-    }
-  }
-
-  set id(id) {
-    if (id !== this._id)
-        this._id = id;
-  }
-  get id(){
-    return this._id;
-  }
-
-  set description(desc) {
-    if (desc !== this._description)
-        this._description = desc;
-  }
-  get description(){
-    return this._description;
-  }
-
-  set latitude(lat) {
-    if (lat !== this._latitude)
-        this._latitude = lat;
-  }
-  get latitude(){
-    return this._latitude;
-  }
-
-  set longitude(lng) {
-    if (lng !== this._longitude)
-        this._longitude = lng;
-  }
-  get longitude(){
-    return this._longitude;
-  }
-
-  set color(color) {
-    if (color !== this._color)
-        this._color = color;
-  }
-  get color(){
-    return this._color;
-  }
-  
-  set radius(radius) {
-    if (radius !== this._radius)
-        this._radius = radius;
-  }
-  get radius(){
-    return this._radius;
-  }
-
-  set marker(marker){
-    this._marker = marker;
-  }
-  get marker(){
-    return this._marker;
-  }
-
-  set selected(selected){
-    this._selected = selected;
-  }
-  get selected(){
-    return this._selected;
+      id:     this.#id,
+      desc:   this.#description,
+      lat:    this.#latitude,
+      lng:    this.#longitude,
+      color:  this.#color,
+      radius: this.#radius,
+    };
   }
 }
 
